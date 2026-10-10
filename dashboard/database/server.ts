@@ -1,5 +1,5 @@
 import { createServer, type ServerResponse } from "node:http";
-import { databaseError, getDatabaseCatalog, readDatabaseRows, readDashboard } from "./database.ts";
+import { databaseError, getDatabaseCatalog, readDatabaseRows, readDashboard, readCodeHistory } from "./database.ts";
 import { dashboardTables, type DashboardTable } from "./dashboard-types.ts";
 
 function json(response: ServerResponse, status: number, value: unknown): void {
@@ -26,7 +26,7 @@ export function createDatabaseServer() {
 			return;
 		}
 		const path = new URL(request.url ?? "/", `http://${host}`);
-		if (!["/api/database/catalog", "/api/database/rows", "/api/database/dashboard"].includes(path.pathname)) {
+		if (!["/api/database/catalog", "/api/database/rows", "/api/database/dashboard", "/api/database/code-history"].includes(path.pathname)) {
 			json(response, 404, { error: "接口不存在" });
 			return;
 		}
@@ -35,6 +35,20 @@ export function createDatabaseServer() {
 			return;
 		}
 		void (async () => {
+			if (path.pathname === "/api/database/code-history") {
+				const table = path.searchParams.get("table") ?? "real_data_01";
+				const page = Number(path.searchParams.get("page") ?? 1);
+				const from = path.searchParams.get("from") ?? undefined, to = path.searchParams.get("to") ?? undefined;
+				const validDate = (value: string | undefined) => !value || (Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value);
+				if (!dashboardTables.includes(table as DashboardTable) || !Number.isInteger(page) || page < 1 || page > 1000 || !validDate(from) || !validDate(to) || (from && to && from > to) || [...path.searchParams.keys()].some((key) => !["table", "page", "from", "to"].includes(key))) {
+					json(response, 400, { error: "请提供有效数据来源、页码和起止时间，开始时间不能晚于结束时间。" }); return;
+				}
+				const controller = new AbortController();
+				response.once("close", () => { if (!response.writableEnded) controller.abort(); });
+				const data = await readCodeHistory({ table: table as DashboardTable, page, from, to }, AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]));
+				if (!response.destroyed) json(response, 200, data);
+				return;
+			}
 			if (path.pathname === "/api/database/dashboard") {
 				const table = path.searchParams.get("table") ?? "real_data_01";
 				const limit = Number(path.searchParams.get("limit") ?? 100);

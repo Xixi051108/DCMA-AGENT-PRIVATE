@@ -1,4 +1,6 @@
 import { createPool, escapeId, type Pool, type PoolConnection, type RowDataPacket } from "mysql2/promise";
+import type { Connection as CoreConnection } from "mysql2";
+import { createCodeHistory, type CodeHistoryOptions } from "./code-events.ts";
 import type { DatabaseCatalog, DatabaseRows, DatabaseTable } from "./types.ts";
 import { collectionTimeSql, makeDashboardData, normalizeRecord } from "./dashboard-data.ts";
 import { dashboardTables, type DashboardData, type DashboardSource, type DashboardTable } from "./dashboard-types.ts";
@@ -64,6 +66,8 @@ export function databaseError(error: unknown): string {
 	if (error instanceof Error && error.message === "MYSQL_NOT_CONFIGURED") return "尚未配置 MySQL 后端连接。";
 	if (error instanceof Error && error.message === "MYSQL_INVALID_PORT") return "MySQL 端口配置无效。";
 	if (error instanceof Error && error.message === "DASHBOARD_RESULT_TOO_LARGE") return "单条记录超过展板结果大小限制，请通过原始记录预览核对数据。";
+	if (error instanceof Error && error.message === "CODE_HISTORY_UNAVAILABLE") return "当前来源不存在或缺少故障历史所需字段。";
+	if (error instanceof Error && error.message === "CODE_HISTORY_MIXED_DEVICES") return "当前来源包含多个设备或变频器，已停止混合展示故障历史。";
 	return "MySQL 未连接或查询失败；请确认校园网/VPN、3306 端口及数据库权限。没有返回可用于分析的数据。";
 }
 
@@ -260,5 +264,28 @@ export async function readDashboard(table: DashboardTable, limit: 50 | 100 | 200
 			if (name === table) { selectedRows = rows.slice(0, limit); hasMore = rows.length > limit; }
 		}
 		return makeDashboardData(table, limit, summaries, selectedRows, hasMore);
+	}, signal);
+}
+
+export async function readCodeHistory(options: CodeHistoryOptions, signal?: AbortSignal) {
+	if (!dashboardTables.includes(options.table)) throw new Error("无效的展板参数");
+	const metadata = (await listDatabaseTables()).find((item) => item.schema === "dcma" && item.name === options.table);
+	if (!metadata || ["id", "timestamp", "device_name", "inverter_name", "fault_code", "alarm_code"].some((field) => !metadata.columns.some((column) => column.name === field))) throw new Error("CODE_HISTORY_UNAVAILABLE");
+	return readOnly(async (connection) => {
+		const qualified = `${escapeId("dcma")}.${escapeId(options.table)}`;
+		const [identities] = await connection.query<RowDataPacket[]>({ sql: `SELECT DISTINCT device_name, inverter_name FROM ${qualified}
+			WHERE device_name IS NOT NULL AND TRIM(device_name) <> '' AND inverter_name IS NOT NULL AND TRIM(inverter_name) <> '' LIMIT 2`, timeout: 5000 });
+		if (identities.length > 1) throw new Error("CODE_HISTORY_MIXED_DEVICES");
+		const history = createCodeHistory(options);
+		if (!identities.length) return history.finish();
+		const stream = (connection.connection as unknown as CoreConnection).query({ sql: `SELECT id, timestamp, fault_code, alarm_code, ${collectionTimeSql} AS __collection_ms FROM ${qualified}
+			WHERE device_name <=> ? AND inverter_name <=> ? ORDER BY __collection_ms ASC, id ASC`, timeout: 55000 }, [identities[0].device_name, identities[0].inverter_name]).stream({ highWaterMark: 1000 });
+		const abortStream = () => stream.destroy(new Error("故障历史查询已取消"));
+		signal?.addEventListener("abort", abortStream, { once: true });
+		try {
+			signal?.throwIfAborted();
+			for await (const row of stream) { signal?.throwIfAborted(); history.add(row as Record<string, unknown>); }
+		} finally { signal?.removeEventListener("abort", abortStream); }
+		return history.finish();
 	}, signal);
 }

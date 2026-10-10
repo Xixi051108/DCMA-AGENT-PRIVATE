@@ -32,6 +32,9 @@ test("只读接口在无凭据时明确失败，并拒绝写入、无效参数�
 	assert.equal((await fetch(`${base}/api/database/rows?schema=example&table=real_data`)).status, 503);
 	assert.equal((await fetch(`${base}/api/database/dashboard?table=real_data_01&limit=100`)).status, 503);
 	assert.equal((await fetch(`${base}/api/database/dashboard`, { method: "POST" })).status, 405);
+	assert.equal((await fetch(`${base}/api/database/code-history`, { method: "POST" })).status, 405);
+	assert.equal((await fetch(`${base}/api/database/code-history?table=real_data_01`)).status, 503);
+	for (const query of ["table=other", "page=0", "page=1.5", "page=1001", "from=invalid", "from=2026-02-30T00:00:00.000Z", "limit=100", "from=2026-10-11T00:00:00.000Z&to=2026-10-10T00:00:00.000Z"]) assert.equal((await fetch(`${base}/api/database/code-history?${query}`)).status, 400);
 	for (const query of ["table=other", "limit=20", "limit=101", "limit=NaN", "schema=other", "table=real_data%60%3BDELETE"]) {
 		assert.equal((await fetch(`${base}/api/database/dashboard?${query}`)).status, 400);
 	}

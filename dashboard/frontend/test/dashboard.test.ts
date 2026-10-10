@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { displayTime, displayValue, displayRaw, displayRawField, codeClassName, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
+import { displaySamplingSpan } from "../src/code-analysis.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
 	assert.equal(displayValue(0), "0");
@@ -59,4 +60,12 @@ test("曲线在缺失点断开，0与负值仍保留且单点可绘制", () => {
 	assert.equal(linePath([{ x: 0, y: 0 }, { x: 1, y: -2 }, { x: 2, y: null }, { x: 3, y: 4 }]), "M0.00,0.00 L1.00,-2.00  M3.00,4.00");
 	assert.equal(linePath([{ x: 0, y: null }, { x: 1, y: 0 }]), "M1.00,0.00");
 	assert.equal(linePath([{ x: 0, y: null }]), "");
+});
+
+test("异常持续时间保留毫秒并按天、小时、分秒显示", () => {
+	assert.equal(displaySamplingSpan(0), "0 秒");
+	assert.equal(displaySamplingSpan(1250), "1.25 秒");
+	assert.equal(displaySamplingSpan(61250), "1 分 1.25 秒");
+	assert.equal(displaySamplingSpan(3660000), "1 小时 1 分");
+	assert.equal(displaySamplingSpan(90061001), "1 天 1 小时 1 分 1.001 秒");
 });

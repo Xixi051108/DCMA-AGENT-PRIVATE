@@ -32,6 +32,7 @@ async (page) => {
 		data.returned = data.records.length;
 		await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(data) });
 	});
+	await page.route("**/api/database/code-history?**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ table: new URL(route.request().url()).searchParams.get("table"), queriedAt: new Date().toISOString(), page: 1, pageSize: 50, total: 0, faults: 0, alarms: 0, open: 0, invalidTimes: 0, events: [], codes: [] }) }));
 	try {
 		await page.setViewportSize({ width: 1366, height: 900 });
 		for (const scenario of cases) {
@@ -50,12 +51,33 @@ async (page) => {
 						await verify(page.locator(".parameter-grid > div").filter({ has: page.getByText(label, { exact: true }) }).locator("dd"), field, current[field], "完整参数");
 					}
 					if (view === "故障与报警" || view === "采样明细") {
-						const column = (await page.locator("table th").allTextContents()).indexOf(label);
+						const table = view === "故障与报警" ? page.locator(".code-table") : page.locator(".table-scroll");
+						const column = (await table.locator("table th").allTextContents()).indexOf(label);
 						check(column >= 0, `${view}缺少${label}列`);
 						for (let index = 0; index < 3; index++) {
-							await verify(page.locator("table tbody tr").nth(index).locator("td").nth(column), field,
+							await verify(table.locator("table tbody tr").nth(index).locator("td").nth(column), field,
 								index === 0 ? current[field] : index === 1 ? 0 : null, `${view}/记录${index}`);
 						}
+					}
+				}
+				if (view === "故障与报警") {
+					const fault = color("fault", current.fault) === "rgb(185, 28, 28)" ? 1 : 0;
+					const alarm = color("alarm", current.alarm) === "rgb(161, 98, 7)" ? 1 : 0;
+					await page.getByRole("combobox", { name: "记录类型", exact: true }).selectOption("fault_code");
+					check(await page.locator(".code-table tbody tr").count() === fault, "故障筛选错误");
+					await page.getByRole("combobox", { name: "记录类型", exact: true }).selectOption("alarm_code");
+					check(await page.locator(".code-table tbody tr").count() === alarm, "报警筛选错误");
+					await page.getByRole("searchbox", { name: "查询代码", exact: true }).fill("不存在的代码");
+					check(await page.locator(".code-table tbody tr").count() === 0, "代码查询未过滤记录");
+					await page.getByRole("button", { name: "重置筛选", exact: true }).click();
+					check(await page.locator(".code-table tbody tr").count() === 3, "重置筛选没有恢复全部记录");
+					if (scenario === cases[0]) {
+						for (const width of [375, 768, 1366, 1920]) {
+							await page.setViewportSize({ width, height: 900 });
+							check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}代码分析页横向溢出`);
+							if (width === 375 || width === 1366) await page.screenshot({ path: `output/playwright/code-analysis-${width}.png`, fullPage: true });
+						}
+						await page.setViewportSize({ width: 1366, height: 900 });
 					}
 				}
 				if (scenario === cases[0] && view === "故障与报警") {
@@ -68,6 +90,7 @@ async (page) => {
 	} finally {
 		try {
 			await page.unroute("**/api/database/dashboard?**");
+			await page.unroute("**/api/database/code-history?**");
 			await page.goto("http://127.0.0.1:3000/#overview");
 			await page.reload();
 			await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();

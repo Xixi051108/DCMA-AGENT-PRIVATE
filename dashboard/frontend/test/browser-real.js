@@ -115,7 +115,7 @@ async (page) => {
 		await nav.getByRole("link", { name: "故障与报警", exact: true }).click();
 		await page.getByRole("region", { name: "当前代码" }).waitFor();
 		check(await page.locator(".code-grid .running-card").count() === 4, "移除status后代码卡片数量错误");
-		check(await page.locator(".code-table table th").count() === 6, "移除status后代码记录字段数量错误");
+		check(await page.locator(".code-table table th").count() === 8, "代码记录的设备、变频器及代码字段数量错误");
 		check((await page.locator(".code-grid").innerText()).includes("F01030"), "非零故障码未保留");
 		check(await page.locator(".code-grid .running-card").filter({ has: page.getByText("报警码", { exact: true }) }).locator("strong").innerText() === "0", "历史采样中的零报警码未仅显示0");
 		check(await page.locator(".code-table tbody tr").count() > 0, "代码采样记录未展示");

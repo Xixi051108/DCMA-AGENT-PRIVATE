@@ -55,3 +55,30 @@ export interface DashboardData {
 	truncated: boolean;
 	warnings: string[];
 }
+
+export type CodeField = "fault_code" | "alarm_code";
+export interface CodeEvent {
+	id: string;
+	field: CodeField;
+	code: string;
+	startedAt: string;
+	endedAt: string | null;
+	lastSeenAt: string;
+	samples: number;
+	ending: "zero" | "changed" | null;
+	startUncertain: boolean;
+	hasMissingSamples: boolean;
+}
+export interface CodeHistory {
+	table: DashboardTable;
+	queriedAt: string;
+	page: number;
+	pageSize: number;
+	total: number;
+	faults: number;
+	alarms: number;
+	open: number;
+	invalidTimes: number;
+	events: CodeEvent[];
+	codes: { field: CodeField; code: string; count: number }[];
+}
