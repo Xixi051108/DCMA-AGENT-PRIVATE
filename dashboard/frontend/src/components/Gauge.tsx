@@ -23,6 +23,6 @@ export function Gauge({ label, unit, value, samples }: { label: string; unit: st
 		</svg>
 		<strong className="gauge-value">{displayValue(value)}</strong>
 		<p className="small muted">{unit}</p>
-		<p className="gauge-range">{range ? "采样范围 · 非额定量程" : "暂无有效采样范围"}</p>
+		<p className="gauge-range">{range ? "采样范围" : "暂无有效采样范围"}</p>
 	</article>;
 }

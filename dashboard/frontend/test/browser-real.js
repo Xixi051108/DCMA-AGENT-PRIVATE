@@ -19,6 +19,12 @@ async (page) => {
 			await page.getByRole("heading", { name, exact: true, level: 1 }).waitFor();
 			check(await nav.getByRole("link", { name, exact: true }).getAttribute("aria-current") === "page", `${name}菜单未选中`);
 			check(await page.locator("main").getByText("状态码", { exact: true }).count() === 0, `${name}仍显示status字段`);
+			if (name !== "数据说明") {
+				const content = await page.locator("body").innerText();
+				for (const note of ["原始值 · 格式待确认", "单位待确认", "0 为正常 · 其他保留原始代码", "单位按参考图标注", "表格可横向滚动", "采样范围 · 非额定量程", "北京时间 · 悬停"]) {
+					check(!content.includes(note), `${name}仍显示说明文字：${note}`);
+				}
+			}
 			check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}/${name}页面横向溢出`);
 		}
 	}

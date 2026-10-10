@@ -20,7 +20,7 @@ export function LineChart({ samples, fields }: { samples: DashboardSample[]; fie
 	const index = selected === null ? null : Math.min(selected, samples.length - 1);
 	const current = index === null ? null : samples[index];
 	return <div className="trend-chart">
-		<div className="chart-legend">{fields.map((field, series) => <span key={field}><i style={{ background: colors[series] }} className={series ? "dashed" : ""} />{displayFieldLabel(field)}{series ? "（虚线）" : "（实线）"}</span>)}{fields.some((field) => !fieldUnits[field]) && <span className="muted">单位待确认</span>}</div>
+		<div className="chart-legend">{fields.map((field, series) => <span key={field}><i style={{ background: colors[series] }} className={series ? "dashed" : ""} />{displayFieldLabel(field)}{series ? "（虚线）" : "（实线）"}</span>)}</div>
 		<div className="chart-surface">
 			<svg viewBox="0 0 1000 255" preserveAspectRatio="none" tabIndex={0} role="group" aria-labelledby={titleId}
 				onPointerMove={(event) => {
@@ -39,7 +39,7 @@ export function LineChart({ samples, fields }: { samples: DashboardSample[]; fie
 					else if (event.key === "End") setSelected(samples.length - 1);
 					else setSelected(Math.max(0, Math.min(samples.length - 1, (index ?? samples.length - 1) + (event.key === "ArrowLeft" ? -1 : 1))));
 				}}>
-				<title id={titleId}>{fields.map((field) => fieldLabels[field]).join("与")}趋势，{samples.length}条采样。单位：{fieldUnits[fields[0]] ?? "待确认"}。左右箭头查看相邻采样，Home/End查看首尾，Esc关闭提示。缺失值不连线。</title>
+				<title id={titleId}>{fields.map((field) => fieldLabels[field]).join("与")}趋势，{samples.length}条采样{fieldUnits[fields[0]] ? `。单位：${fieldUnits[fields[0]]}` : ""}。左右箭头查看相邻采样，Home/End查看首尾，Esc关闭提示。缺失值不连线。</title>
 				{[0, 1, 2, 3, 4].map((tick) => {
 					const value = min + (max - min) * tick / 4;
 					return <g key={tick}><line x1={left} x2={right} y1={y(value)} y2={y(value)} stroke="#e8eef5" /><text x={left - 12} y={y(value) + 4} textAnchor="end">{Number(value.toPrecision(4))}</text></g>;
@@ -53,6 +53,5 @@ export function LineChart({ samples, fields }: { samples: DashboardSample[]; fie
 			</svg>
 			{current && <div className="chart-tooltip" role="status" style={{ left: `${Math.min(65, Math.max(0, x(current) / 10))}%` }}><strong>{displayTime(current.acquiredAt, false, true)}</strong><span>记录 {current.id}</span>{fields.map((field) => <p key={field}>{displayFieldLabel(field)}<b>{displayValue(current.values[field])}</b></p>)}</div>}
 		</div>
-		<p className="muted small">北京时间 · 悬停或聚焦曲线后用 ← → 查看采样 · 缺失值处断开</p>
 	</div>;
 }
