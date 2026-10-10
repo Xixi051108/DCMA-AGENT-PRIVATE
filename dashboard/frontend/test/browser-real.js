@@ -113,7 +113,7 @@ async (page) => {
 	check(await page.locator(".code-grid .running-card").count() === 4, "移除status后代码卡片数量错误");
 	check(await page.locator(".code-table table th").count() === 6, "移除status后代码记录字段数量错误");
 	check((await page.locator(".code-grid").innerText()).includes("F01030"), "非零故障码未保留");
-	check((await page.locator(".code-grid").innerText()).includes("0（正常）"), "历史采样中的零报警码未标注正常");
+	check(await page.locator(".code-grid .running-card").filter({ has: page.getByText("报警码", { exact: true }) }).locator("strong").innerText() === "0", "历史采样中的零报警码未仅显示0");
 	check(await page.locator(".code-table tbody tr").count() > 0, "代码采样记录未展示");
 	await page.screenshot({ path: "output/playwright/codes.png", fullPage: true });
 	await nav.getByRole("link", { name: "采样明细", exact: true }).click();
@@ -136,5 +136,5 @@ async (page) => {
 	await page.setViewportSize({ width: 1366, height: 900 });
 	await page.locator(".chart-surface svg").hover({ position: { x: 450, y: 120 } });
 	await page.screenshot({ path: "output/playwright/trend-hover.png" });
-	console.log("PASS: 六页导航与浏览器后退、375/768/1366/1920无横向溢出、跨页仅显示所选电机；单位标注、隐藏status、故障报警0正常及原码、18项分组与趋势跳转、30字段、6仪表、悬停、键盘、50/100/200、手动与自动刷新。");
+	console.log("PASS: 六页导航与浏览器后退、375/768/1366/1920无横向溢出、跨页仅显示所选电机；单位标注、隐藏status、故障报警零值仅显示0及原码、18项分组与趋势跳转、30字段、6仪表、悬停、键盘、50/100/200、手动与自动刷新。");
 }

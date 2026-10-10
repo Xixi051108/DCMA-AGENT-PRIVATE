@@ -112,7 +112,7 @@ export function App() {
 				{view === "guide" && <div className="guide-grid">
 					<section className="panel-card"><div className="guide-heading"><h2>当前数据来源</h2><img className="source-illustration" src="/assets/illustrations/sampling-records.svg" alt="" aria-hidden="true" width="320" height="160" loading="lazy" /></div><p className="guide-value">G120 电机 {motor} <span className="source-badge">{sourceLabel}</span></p><p>{motor === 1 ? "电机 1 可在模拟数据和历史真实采集之间切换，两种来源分别展示。" : `电机 ${motor} 展示自己的模拟采样记录。`}</p><p>模拟数据也是已存入数据库的记录。切换侧边栏中的设备后，所有页面同步显示该电机的数据。</p></section>
 					<section className="panel-card"><h2>采样与时间</h2><p>采集时间表示设备数据的采样时间；入库时间表示记录写入数据库的时间；查询时间表示页面读取成功的时间。</p><p>页面时间统一显示为北京时间。每 5 秒检查一次更新，也可点击“刷新数据”。历史采集在没有新记录时会显示“本次无新采样”。</p></section>
-					<section className="panel-card"><h2>指标与代码</h2><p>展示 18 项数值指标和 {fields.length} 个字段。转速 rpm、电流 A、转矩 N·m、电压 V、功率 kW、温度 °C、负荷率 %，按参考图标注，不换算数值。脉冲频率单位、运行时间格式及额定值待确认。</p><p>故障码与报警码保留原始代码，0 标注为正常，其他代码直接显示。控制字与状态字保留原值；缺失值显示“—”。</p><a className="text-link" href="#metrics">查看分组指标 →</a></section>
+					<section className="panel-card"><h2>指标与代码</h2><p>展示 18 项数值指标和 {fields.length} 个字段。转速 rpm、电流 A、转矩 N·m、电压 V、功率 kW、温度 °C、负荷率 %，按参考图标注，不换算数值。脉冲频率单位、运行时间格式及额定值待确认。</p><p>故障码与报警码保留原始代码，零值仅显示 0，其他代码直接显示。控制字与状态字保留原值；缺失值显示“—”。</p><a className="text-link" href="#metrics">查看分组指标 →</a></section>
 					<section className="panel-card"><h2>曲线与仪表</h2><p>曲线展示最近 50、100 或 200 条记录中的有效时间采样。缺失数值处断线，无效采集时间不进入曲线。</p><p>仪表刻度由当前采样范围生成，恒定读数会扩展显示范围。仪表范围不代表安全阈值。采样明细保留记录的完整精度。</p><a className="text-link" href="#realtime">查看采样趋势 →</a></section>
 				</div>}
 			</main>

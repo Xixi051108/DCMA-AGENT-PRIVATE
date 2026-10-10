@@ -10,7 +10,7 @@ async (page) => {
 		{ name: "缺失", fault: null, alarm: "" },
 	];
 	let current = cases[0];
-	const text = (value) => value === 0 || value === "0" ? "0（正常）" : value === null || value === "" ? "—" : String(value);
+	const text = (value) => value === null || value === "" ? "—" : String(value);
 	const color = (field, value) => value === 0 || value === "0" || value === null || value === ""
 		? "rgb(30, 41, 59)" : field === "fault" ? "rgb(185, 28, 28)" : "rgb(161, 98, 7)";
 	const verify = async (node, field, value, context) => {

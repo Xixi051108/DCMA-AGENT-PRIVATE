@@ -12,8 +12,8 @@ export function displayFieldLabel(field: DashboardField): string {
 	return fieldUnits[field] ? `${fieldLabels[field]}（${fieldUnits[field]}）` : fieldLabels[field];
 }
 
-export function displayRawField(field: DashboardField, value: unknown): string {
-	return (field === "fault_code" || field === "alarm_code") && (value === 0 || value === "0") ? "0（正常）" : displayRaw(value);
+export function displayRawField(_field: DashboardField, value: unknown): string {
+	return displayRaw(value);
 }
 
 export function codeClassName(field: DashboardField, value: unknown): string | undefined {
