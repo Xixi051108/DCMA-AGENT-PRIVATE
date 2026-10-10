@@ -53,7 +53,9 @@ async (page) => {
 			await page.setViewportSize({ width, height: 900 });
 			await page.evaluate(() => window.scrollTo(0, 0));
 			check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}历史页面横向溢出`);
-			check(await page.locator(".code-timeline").evaluate((svg) => [...svg.querySelectorAll("g[tabindex]")].every((node) => { const rect = node.getBoundingClientRect(), bounds = svg.getBoundingClientRect(); return rect.left >= bounds.left && rect.right <= bounds.right; })), `${width}历史时段被裁切`);
+			check(await page.getByRole("region", { name: "历史异常时段", exact: true }).count() === 0, `${width}仍显示历史异常时段`);
+			const distribution = page.getByRole("region", { name: "历史代码分布", exact: true });
+			check(await distribution.evaluate((node) => Math.abs(node.getBoundingClientRect().width - node.parentElement.querySelector(".device-detail").getBoundingClientRect().width) < 2), `${width}历史代码分布未铺满内容区`);
 			if (width === 375 || width === 1366) await page.screenshot({ path: `output/playwright/history-${width}.png`, fullPage: true });
 		}
 		await page.setViewportSize({ width: 1366, height: 900 });
