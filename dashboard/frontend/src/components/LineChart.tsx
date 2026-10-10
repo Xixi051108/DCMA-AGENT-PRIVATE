@@ -1,100 +1,58 @@
-import { useId } from "react";
-import type { ChartPoint } from "../types.ts";
+import { useId, useState } from "react";
+import type { DashboardSample, NumericField } from "../database-types.ts";
+import { fieldLabels } from "../database-types.ts";
+import { displayTime, displayValue, linePath, sampleRange } from "../dashboard-view.ts";
 
-export function LineChart({
-	points,
-	threshold,
-	label,
-	compact = false,
-}: {
-	points: ChartPoint[];
-	threshold?: number;
-	label: string;
-	compact?: boolean;
-}) {
+const colors = ["#2563eb", "#d97706"];
+const left = 70, right = 975, top = 18, bottom = 220;
+
+export function LineChart({ samples, fields }: { samples: DashboardSample[]; fields: NumericField[] }) {
 	const titleId = useId();
-	if (!points.length) return <p className="text-xs text-slate-500 py-4">暂无{label}数据</p>;
-	// Keep both extremes in each bucket so short spikes survive display downsampling.
-	const display: ChartPoint[] = [];
-	const bucketSize = Math.max(1, Math.ceil(points.length / 250));
-	for (let i = 0; i < points.length; i += bucketSize) {
-		const bucket = points.slice(i, i + bucketSize);
-		const low = bucket.reduce((a, b) => (a.value <= b.value ? a : b));
-		const high = bucket.reduce((a, b) => (a.value >= b.value ? a : b));
-		for (const point of bucket.filter((point) => point === low || point === high)) display.push(point);
-	}
-	if (display[0] !== points[0]) display.unshift(points[0]);
-	if (display.at(-1) !== points.at(-1)) display.push(points.at(-1)!);
-	const values = display.map((point) => point.value);
-	if (threshold !== undefined) values.push(threshold);
-	const low = Math.min(...values);
-	const high = Math.max(...values);
-	const padding = Math.max((high - low) * 0.12, Math.abs(high) * 0.01, 0.01);
-	const min = low - padding;
-	const max = high + padding;
-	const left = compact ? 0 : 50;
-	const right = compact ? 400 : 390;
-	const top = compact ? 0 : 12;
-	const bottom = compact ? 100 : 145;
-	const firstTime = points[0].time ?? 0;
-	const lastTime = points.at(-1)?.time ?? points.length - 1;
-	const x = (point: ChartPoint, index: number) =>
-		left + (((point.time ?? index) - firstTime) / (lastTime - firstTime || 1)) * (right - left);
-	const y = (value: number) => bottom - ((value - min) / (max - min)) * (bottom - top);
-	const path = display
-		.map((point, i) => `${i ? "L" : "M"}${x(point, i).toFixed(2)},${y(point.value).toFixed(2)}`)
-		.join(" ");
-	return (
-		<div className={compact ? "h-5 w-full" : "w-full"}>
-			<svg
-				role="img"
-				aria-labelledby={titleId}
-				className={compact ? "h-full w-full" : "w-full h-40"}
-				viewBox={compact ? "0 0 400 100" : "0 0 410 175"}
-				preserveAspectRatio={compact ? "none" : "xMidYMid meet"}
-			>
-				<title id={titleId}>
-					{label}，{points.length} 个采样点{threshold === undefined ? "" : `，阈值 ${threshold}`}
-				</title>
-				{!compact &&
-					[0, 1, 2, 3].map((index) => {
-						const value = min + ((max - min) * index) / 3;
-						return (
-							<g key={index}>
-								<line x1={left} x2={right} y1={y(value)} y2={y(value)} stroke="#e2e8f0" />
-								<text x="45" y={y(value) + 3} textAnchor="end" fontSize="9" fill="#64748b">
-									{value.toPrecision(3)}
-								</text>
-							</g>
-						);
-					})}
-				{threshold !== undefined && (
-					<line x1={left} x2={right} y1={y(threshold)} y2={y(threshold)} stroke="#ef4444" strokeDasharray="5 4" />
-				)}
-				<path
-					d={path}
-					stroke="#2563eb"
-					fill="none"
-					strokeWidth={compact ? 1.5 : 2}
-					vectorEffect="non-scaling-stroke"
-				/>
-				{points.length === 1 && <circle cx={x(points[0], 0)} cy={y(points[0].value)} r="3" fill="#2563eb" />}
-				{!compact &&
-					[0, Math.floor((points.length - 1) / 2), points.length - 1]
-						.filter((index, i, list) => list.indexOf(index) === i)
-						.map((index) => (
-							<text
-								key={index}
-								x={x(points[index], index)}
-								y="166"
-								textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"}
-								fontSize="8"
-								fill="#64748b"
-							>
-								{points[index].name}
-							</text>
-						))}
+	const [selected, setSelected] = useState<number | null>(null);
+	const range = sampleRange(samples.flatMap((sample) => fields.map((field) => sample.values[field])));
+	if (!samples.length || !range) return <p className="chart-empty">当前采样窗口暂无有效{fields.map((field) => fieldLabels[field]).join(" / ")}曲线数据</p>;
+	const padding = (range.max - range.min) * .12;
+	const min = range.min - padding, max = range.max + padding;
+	const start = new Date(samples[0].acquiredAt).getTime();
+	const end = new Date(samples.at(-1)!.acquiredAt).getTime();
+	const x = (sample: DashboardSample) => end === start ? (left + right) / 2 : left + (new Date(sample.acquiredAt).getTime() - start) / (end - start) * (right - left);
+	const y = (value: number) => bottom - (value - min) / (max - min) * (bottom - top);
+	const index = selected === null ? null : Math.min(selected, samples.length - 1);
+	const current = index === null ? null : samples[index];
+	return <div className="trend-chart">
+		<div className="chart-legend">{fields.map((field, series) => <span key={field}><i style={{ background: colors[series] }} className={series ? "dashed" : ""} />{fieldLabels[field]}{series ? "（虚线）" : "（实线）"}</span>)}<span className="muted">单位待确认</span></div>
+		<div className="chart-surface">
+			<svg viewBox="0 0 1000 255" preserveAspectRatio="none" tabIndex={0} role="group" aria-labelledby={titleId}
+				onPointerMove={(event) => {
+					const bounds = event.currentTarget.getBoundingClientRect();
+					const cursor = (event.clientX - bounds.left) / bounds.width * 1000;
+					let nearest = 0;
+					for (let i = 1; i < samples.length; i++) if (Math.abs(x(samples[i]) - cursor) <= Math.abs(x(samples[nearest]) - cursor)) nearest = i;
+					setSelected(nearest);
+				}}
+				onPointerLeave={() => setSelected(null)} onFocus={() => setSelected(samples.length - 1)} onBlur={() => setSelected(null)}
+				onKeyDown={(event) => {
+					if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
+					event.preventDefault();
+					if (event.key === "Escape") setSelected(null);
+					else if (event.key === "Home") setSelected(0);
+					else if (event.key === "End") setSelected(samples.length - 1);
+					else setSelected(Math.max(0, Math.min(samples.length - 1, (index ?? samples.length - 1) + (event.key === "ArrowLeft" ? -1 : 1))));
+				}}>
+				<title id={titleId}>{fields.map((field) => fieldLabels[field]).join("与")}趋势，{samples.length}条采样。左右箭头查看相邻采样，Home/End查看首尾，Esc关闭提示。缺失值不连线。</title>
+				{[0, 1, 2, 3, 4].map((tick) => {
+					const value = min + (max - min) * tick / 4;
+					return <g key={tick}><line x1={left} x2={right} y1={y(value)} y2={y(value)} stroke="#e8eef5" /><text x={left - 12} y={y(value) + 4} textAnchor="end">{Number(value.toPrecision(4))}</text></g>;
+				})}
+				{fields.map((field, series) => <g key={field}>
+					<path d={linePath(samples.map((sample) => ({ x: x(sample), y: sample.values[field] === null ? null : y(sample.values[field]) })))} fill="none" stroke={colors[series]} strokeWidth="2" strokeDasharray={series ? "6 4" : undefined} vectorEffect="non-scaling-stroke" />
+					{samples.map((sample, i) => sample.values[field] !== null && <circle key={`${sample.id}/${i}`} cx={x(sample)} cy={y(sample.values[field])} r="2" fill={colors[series]} />)}
+				</g>)}
+				{[0, Math.floor((samples.length - 1) / 2), samples.length - 1].filter((tick, i, list) => list.indexOf(tick) === i).map((tick) => <text key={tick} x={x(samples[tick])} y="248" textAnchor={tick === 0 ? "start" : tick === samples.length - 1 ? "end" : "middle"}>{displayTime(samples[tick].acquiredAt, true)}</text>)}
+				{current && <line x1={x(current)} x2={x(current)} y1={top} y2={bottom} stroke="#94a3b8" strokeDasharray="3 4" />}
 			</svg>
+			{current && <div className="chart-tooltip" role="status" style={{ left: `${Math.min(65, Math.max(0, x(current) / 10))}%` }}><strong>{displayTime(current.acquiredAt)}</strong><span>记录 {current.id}</span>{fields.map((field) => <p key={field}>{fieldLabels[field]}<b>{displayValue(current.values[field])}</b></p>)}</div>}
 		</div>
-	);
+		<p className="muted small">北京时间 · 悬停或聚焦曲线后用 ← → 查看采样 · 缺失值处断开</p>
+	</div>;
 }

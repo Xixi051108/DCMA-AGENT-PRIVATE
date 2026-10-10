@@ -23,3 +23,13 @@ export function sampleRange(values: (number | null)[]): { min: number; max: numb
 	const padding = Math.max(Math.abs(min) * 0.1, 1);
 	return { min: min - padding, max: max + padding };
 }
+
+export function linePath(points: { x: number; y: number | null }[]): string {
+	let connected = false;
+	return points.map((point) => {
+		if (point.y === null) { connected = false; return ""; }
+		const command = `${connected ? "L" : "M"}${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+		connected = true;
+		return command;
+	}).join(" ").trim();
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { displayTime, displayValue, sampleIdentity, sampleRange } from "../src/dashboard-view.ts";
+import { displayTime, displayValue, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
@@ -22,4 +22,10 @@ test("仪表采样范围过滤缺失值，恒定值有非零跨度且保留负�
 	assert.deepEqual(sampleRange([0, null, 20, -10]), { min: -10, max: 20 });
 	assert.deepEqual(sampleRange([0, 0]), { min: -1, max: 1 });
 	assert.deepEqual(sampleRange([-200, -200]), { min: -220, max: -180 });
+});
+
+test("曲线在缺失点断开，0与负值仍保留且单点可绘制", () => {
+	assert.equal(linePath([{ x: 0, y: 0 }, { x: 1, y: -2 }, { x: 2, y: null }, { x: 3, y: 4 }]), "M0.00,0.00 L1.00,-2.00  M3.00,4.00");
+	assert.equal(linePath([{ x: 0, y: null }, { x: 1, y: 0 }]), "M1.00,0.00");
+	assert.equal(linePath([{ x: 0, y: null }]), "");
 });

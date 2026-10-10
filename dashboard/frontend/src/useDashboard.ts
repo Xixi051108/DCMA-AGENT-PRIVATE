@@ -11,11 +11,9 @@ export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200) {
 		let busy = false;
 		let previous: DashboardData | null = null;
 		let controller: AbortController | null = null;
-		let timer: ReturnType<typeof setTimeout>;
 		setState({ key, data: null, loading: true, error: "", update: "等待首次查询" });
 		const request = async () => {
 			if (!active || busy) return;
-			clearTimeout(timer);
 			busy = true;
 			controller = new AbortController();
 			const timeout = setTimeout(() => controller?.abort(), 18000);
@@ -35,12 +33,12 @@ export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200) {
 			} finally {
 				clearTimeout(timeout);
 				busy = false;
-				if (active) timer = setTimeout(() => void request(), 5000);
 			}
 		};
 		refresh.current = () => void request();
 		void request();
-		return () => { active = false; clearTimeout(timer); controller?.abort(); };
+		const timer = setInterval(() => void request(), 5000);
+		return () => { active = false; clearInterval(timer); controller?.abort(); };
 	}, [key, table, limit]);
 	return { ...(state.key === key ? state : { data: null, loading: true, error: "", update: "等待首次查询" }), refresh: () => refresh.current() };
 }
