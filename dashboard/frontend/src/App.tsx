@@ -2,10 +2,12 @@ import { useState } from "react";
 import { fieldLabels, numericFields, type DashboardField, type DashboardTable } from "./database-types.ts";
 import { displayTime, displayValue } from "./dashboard-view.ts";
 import { useDashboard } from "./useDashboard.ts";
+import { Gauge } from "./components/Gauge.tsx";
 
 const motorTables: DashboardTable[] = ["real_data_01", "real_data_02", "real_data_03", "real_data_04"];
 const runningFields: DashboardField[] = ["inverter_load_rate", "motor_load_rate", "system_run_time", "status", "fault_code", "alarm_code"];
 const fields = Object.keys(fieldLabels) as DashboardField[];
+const gaugeFields = ["speed_actual", "current_actual", "torque_actual", "dc_voltage", "inverter_temp", "motor_temp"] as const;
 
 export function App() {
 	const [motor, setMotor] = useState(1);
@@ -42,6 +44,7 @@ export function App() {
 				<section className="panel-card device-detail" aria-label="当前设备详情"><div className="detail-heading"><div><p className="eyebrow">当前设备</p><h2>{latest ? displayValue(latest.raw.device_name) : `G120 电机 ${motor}`}</h2><p className="muted">变频器：{displayValue(latest?.raw.inverter_name)}</p></div><span className="source-badge">{sourceLabel}</span></div><div className="time-grid"><div><span>最后采集（北京时间）</span><strong>{displayTime(latest?.acquiredAt)}</strong></div><div><span>入库时间（北京时间）</span><strong>{displayTime(latest?.ingestedAt)}</strong></div><div><span>上次查询成功</span><strong>{displayTime(data?.queriedAt)}</strong></div><div><span>采集更新状态</span><strong>{update}</strong></div></div></section>
 				<div aria-live="polite">{error && <p className="notice error">{data ? "刷新失败，以下保留上次成功结果。" : "当前选择查询失败。"}{error}</p>}{!loading && data && !latest && <p className="notice">{selectedSource?.message || "当前来源暂无采样记录。"}</p>}{data?.warnings.map((warning) => <p className="notice" key={warning}>{warning}</p>)}</div>
 				<section className="panel-card"><div className="section-heading"><div><h2>采样窗口</h2><p className="muted small">按采集时间查看最近记录</p></div><label>采样条数 <select aria-label="采样条数" value={limit} onChange={(event) => setLimit(Number(event.target.value) as 50 | 100 | 200)}>{[50, 100, 200].map((value) => <option key={value} value={value}>{value} 条</option>)}</select></label></div><p className="muted small">已返回 {data?.returned ?? 0} 条记录，{data?.samples.length ?? 0} 条有效时间采样{data?.hasMore ? " · 仅展示最近窗口" : ""}{data?.truncated ? " · 响应已截断" : ""}</p></section>
+				<section aria-label="六项采样仪表" className="gauge-grid">{gaugeFields.map((field) => <Gauge key={field} label={fieldLabels[field]} value={latest?.values[field] ?? null} samples={data?.samples.map((sample) => sample.values[field]) ?? []} />)}</section>
 				<section aria-label="运行信息" className="running-grid">{runningFields.map((field) => <div className="panel-card running-card" key={field}><span>{fieldLabels[field]}</span><strong>{displayValue(latest?.raw[field])}</strong><small>{numericFields.includes(field as typeof numericFields[number]) ? "单位待确认" : "原始值 · 含义待确认"}</small></div>)}</section>
 				<section className="panel-card"><h2>完整参数</h2><p className="muted small">31 个原始字段 · 单位、代码映射及额定值待确认，保留原值</p><dl className="parameter-grid">{fields.map((field) => <div key={field}><dt>{fieldLabels[field]}<small>{field}</small></dt><dd>{displayValue(latest?.raw[field])}</dd></div>)}</dl></section>
 				<section className="panel-card"><details><summary>采样明细 · {data?.returned ?? 0} 条原始记录</summary><div className="table-scroll"><table><thead><tr>{fields.map((field) => <th key={field}>{fieldLabels[field]}<small>{field}</small></th>)}</tr></thead><tbody>{data?.records.map((record) => <tr key={record.id}>{fields.map((field) => <td key={field}>{displayValue(record.raw[field])}</td>)}</tr>)}</tbody></table></div></details></section>

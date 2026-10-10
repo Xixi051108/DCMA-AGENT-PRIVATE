@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { displayTime, displayValue, sampleIdentity } from "../src/dashboard-view.ts";
+import { displayTime, displayValue, sampleIdentity, sampleRange } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
@@ -15,4 +15,11 @@ test("展板显示保留0、负数、原始代码并明确缺失值和北京时�
 	assert.ok(example.samples.every((sample, index) => index === 0 || sample.acquiredAt >= example.samples[index - 1].acquiredAt));
 	assert.notEqual(sampleIdentity(example.latest), sampleIdentity(null));
 	assert.match(example.latest!.raw.device_name!, /开发样例/);
+});
+
+test("仪表采样范围过滤缺失值，恒定值有非零跨度且保留负数", () => {
+	assert.equal(sampleRange([null, NaN, Infinity]), null);
+	assert.deepEqual(sampleRange([0, null, 20, -10]), { min: -10, max: 20 });
+	assert.deepEqual(sampleRange([0, 0]), { min: -1, max: 1 });
+	assert.deepEqual(sampleRange([-200, -200]), { min: -220, max: -180 });
 });

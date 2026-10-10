@@ -13,3 +13,13 @@ export function displayTime(value: string | null | undefined, timeOnly = false):
 export function sampleIdentity(record: DashboardRecord | null): string {
 	return record ? `${record.id}/${record.acquiredAt ?? record.raw.timestamp}` : "";
 }
+
+export function sampleRange(values: (number | null)[]): { min: number; max: number } | null {
+	const valid = values.filter((value): value is number => value !== null && Number.isFinite(value));
+	if (!valid.length) return null;
+	const min = Math.min(...valid);
+	const max = Math.max(...valid);
+	if (min !== max) return { min, max };
+	const padding = Math.max(Math.abs(min) * 0.1, 1);
+	return { min: min - padding, max: max + padding };
+}
