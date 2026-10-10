@@ -97,7 +97,11 @@ async (page) => {
 	await nav.getByRole("link", { name: "设备概览", exact: true }).click();
 	await page.getByRole("region", { name: "完整参数" }).waitFor();
 	check(await page.locator(".parameter-grid > div").count() === 30, "设备概览移除status后字段数量错误");
-	check((await page.locator(".parameter-grid").innerText()).includes("实际转矩（N·m）"), "参数缺少转矩单位");
+	const parameters = page.getByRole("region", { name: "完整参数", exact: true });
+	check(JSON.stringify(await parameters.locator("h3").allTextContents()) === JSON.stringify(["设备信息", "采样信息", "运动参数", "电气参数", "功率参数", "温度参数", "负荷与运行", "故障与控制"]), "完整参数分组错误");
+	check(new Set(await parameters.locator("dt").allTextContents()).size === 30, "完整参数存在重复字段");
+	check(!(await parameters.innerText()).includes("保留最新记录原值"), "完整参数标题下说明未删除");
+	check((await parameters.innerText()).includes("实际转矩（N·m）"), "参数缺少转矩单位");
 	await nav.getByRole("link", { name: "故障与报警", exact: true }).click();
 	await page.getByRole("region", { name: "当前代码" }).waitFor();
 	check(await page.locator(".code-grid .running-card").count() === 4, "移除status后代码卡片数量错误");

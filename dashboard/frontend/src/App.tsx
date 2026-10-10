@@ -26,6 +26,14 @@ const metricGroups: { title: string; description: string; fields: NumericField[]
 	{ title: "温度参数", description: "进气、电机、变频器与散热器温度", fields: ["air_intake_temp", "motor_temp", "inverter_temp", "inverter_radiator_temp"] },
 	{ title: "负荷参数", description: "变频器与电机负荷率", fields: ["inverter_load_rate", "motor_load_rate"] },
 ];
+const parameterGroups: { title: string; fields: DashboardField[] }[] = [
+	{ title: "设备信息", fields: ["device_name", "inverter_name"] },
+	{ title: "采样信息", fields: ["id", "timestamp", "date", "time", "create_time"] },
+	...metricGroups.map(({ title, fields }) => title === "负荷参数"
+		? { title: "负荷与运行", fields: [...fields, "system_run_time" as const] }
+		: { title, fields }),
+	{ title: "故障与控制", fields: codeFields },
+];
 function currentView(): View {
 	return views.find((view) => `#${view.id}` === window.location.hash)?.id ?? "realtime";
 }
@@ -79,7 +87,13 @@ export function App() {
 				{view === "overview" && <>
 					<section className="panel-card overview-intro"><div><p className="eyebrow">设备档案</p><h2>G120 电机 {motor}</h2><p className="muted">当前设备的最新采样与运行参数</p></div><a className="text-link" href="#realtime">查看采样趋势 →</a></section>
 					<section aria-label="运行信息" className="running-grid">{runningCards(runningFields)}</section>
-					<section className="panel-card" aria-label="完整参数"><div className="section-heading"><div><h2>完整参数</h2><p className="muted small">{fields.length} 个字段 · 保留最新记录原值</p></div><a className="text-link" href="#records">查看采样明细 →</a></div><dl className="parameter-grid">{fields.map((field) => <div key={field}><dt>{displayFieldLabel(field)}</dt><dd>{displayRawField(field, latest?.raw[field])}</dd></div>)}</dl></section>
+					<section className="panel-card" aria-label="完整参数">
+						<div className="section-heading"><h2>完整参数</h2><a className="text-link" href="#records">查看采样明细 →</a></div>
+						<div className="parameter-groups">{parameterGroups.map((group) => <section className="parameter-group" key={group.title} aria-label={group.title}>
+							<h3>{group.title}</h3>
+							<dl className="parameter-grid">{group.fields.map((field) => <div key={field}><dt>{displayFieldLabel(field)}</dt><dd>{displayRawField(field, latest?.raw[field])}</dd></div>)}</dl>
+						</section>)}</div>
+					</section>
 				</>}
 				{view === "realtime" && <>
 					<section className="panel-card" aria-label="采样趋势">

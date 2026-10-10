@@ -38,8 +38,8 @@ async (page) => {
 		check(await page.locator(".gauge-value").nth(1).innerText() === "—", "缺失电流未显示破折号");
 		const nav = page.getByRole("navigation", { name: "监控页面" });
 		await nav.getByRole("link", { name: "设备概览", exact: true }).click();
-		check((await page.locator(".parameter-grid").innerText()).includes("-200"), "-200未保留");
-		check((await page.locator(".parameter-grid").innerText()).includes("0.123456789"), "原始数值被舍入");
+		check((await page.getByRole("region", { name: "完整参数", exact: true }).innerText()).includes("-200"), "-200未保留");
+		check((await page.getByRole("region", { name: "完整参数", exact: true }).innerText()).includes("0.123456789"), "原始数值被舍入");
 		await nav.getByRole("link", { name: "运行指标", exact: true }).click();
 		check((await page.getByRole("region", { name: "温度参数" }).innerText()).includes("-200"), "分组指标丢失特殊值");
 		check((await page.getByRole("region", { name: "电气参数" }).innerText()).includes("—"), "分组指标缺失值未标明");
