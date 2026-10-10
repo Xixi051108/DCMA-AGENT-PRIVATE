@@ -10,6 +10,8 @@ async (page) => {
 		{ name: "缺失", fault: null, alarm: "" },
 	];
 	let current = cases[0];
+	const windowSession = await page.context().newCDPSession(page);
+	const { windowId, bounds } = await windowSession.send("Browser.getWindowForTarget");
 	const text = (value) => value === null || value === "" ? "—" : String(value);
 	const color = (field, value) => value === 0 || value === "0" || value === null || value === ""
 		? "rgb(30, 41, 59)" : field === "fault" ? "rgb(185, 28, 28)" : "rgb(161, 98, 7)";
@@ -64,10 +66,19 @@ async (page) => {
 		}
 		console.log("PASS: 四个页面的故障红色、报警黄色、原始字母/数值代码、正常及缺失默认颜色、混合采样记录；数据库未写入。");
 	} finally {
-		await page.unroute("**/api/database/dashboard?**");
-		await page.goto("http://127.0.0.1:3000/#overview");
-		await page.reload();
-		await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();
-		check(await page.getByRole("heading", { name: /模拟验收/ }).count() === 0, "未恢复真实数据");
+		try {
+			await page.unroute("**/api/database/dashboard?**");
+			await page.goto("http://127.0.0.1:3000/#overview");
+			await page.reload();
+			await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();
+			check(await page.getByRole("heading", { name: /模拟验收/ }).count() === 0, "未恢复真实数据");
+		} finally {
+			// 撤销测试视口并恢复真实窗口，避免最大化后仍按固定尺寸显示。
+			await page.setViewportSize({ width: 0, height: 0 });
+			try {
+				await windowSession.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "normal" } });
+				await windowSession.send("Browser.setWindowBounds", { windowId, bounds: bounds.windowState === "normal" ? bounds : { windowState: bounds.windowState } });
+			} finally { await windowSession.detach(); }
+		}
 	}
 }

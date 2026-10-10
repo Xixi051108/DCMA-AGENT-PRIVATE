@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { fieldLabels, numericFields, type DashboardField, type DashboardTable, type NumericField } from "./database-types.ts";
-import { displayTime, displayValue, displayRaw, displayRawField, codeClassName, displayFieldLabel, fieldUnits } from "./dashboard-view.ts";
+import { displayTime, displayValue, displayRawField, codeClassName, displayFieldLabel, fieldUnits } from "./dashboard-view.ts";
 import { useDashboard } from "./useDashboard.ts";
 import { Gauge } from "./components/Gauge.tsx";
 import { LineChart } from "./components/LineChart.tsx";
 
 const motorTables: DashboardTable[] = ["real_data_01", "real_data_02", "real_data_03", "real_data_04"];
-const runningFields: DashboardField[] = ["inverter_load_rate", "motor_load_rate", "system_run_time", "fault_code", "alarm_code"];
+const runningFields: DashboardField[] = ["inverter_load_rate", "motor_load_rate", "fault_code", "alarm_code"];
 const codeFields: DashboardField[] = ["fault_code", "alarm_code", "control_word", "status_word"];
-const fields = (Object.keys(fieldLabels) as DashboardField[]).filter((field) => field !== "status");
+const fields = (Object.keys(fieldLabels) as DashboardField[]).filter((field) => field !== "status" && field !== "system_run_time");
 const gaugeFields = ["speed_actual", "current_actual", "torque_actual", "dc_voltage", "inverter_temp", "motor_temp"] as const;
 const views = [
 	{ id: "overview", title: "设备概览", icon: "M3 10 12 3l9 7M5 9v12h14V9M9 21v-8h6v8" },
@@ -29,9 +29,7 @@ const metricGroups: { title: string; fields: NumericField[] }[] = [
 const parameterGroups: { title: string; fields: DashboardField[] }[] = [
 	{ title: "设备信息", fields: ["device_name", "inverter_name"] },
 	{ title: "采样信息", fields: ["id", "timestamp", "date", "time", "create_time"] },
-	...metricGroups.map(({ title, fields }) => title === "负荷参数"
-		? { title: "负荷与运行", fields: [...fields, "system_run_time" as const] }
-		: { title, fields }),
+	...metricGroups,
 	{ title: "故障与控制", fields: codeFields },
 ];
 function currentView(): View {
@@ -103,7 +101,7 @@ export function App() {
 					<section aria-label="六项采样仪表" className="gauge-grid">{gaugeFields.map((field) => <Gauge key={field} label={fieldLabels[field]} unit={fieldUnits[field]!} value={latest?.values[field] ?? null} samples={data?.samples.map((sample) => sample.values[field]) ?? []} />)}</section>
 					<section aria-label="运行信息" className="running-grid">{runningCards(runningFields)}</section>
 				</>}
-				{view === "metrics" && <div className="metric-groups">{metricGroups.map((group) => <section className="panel-card" key={group.title} aria-label={group.title}><div className="section-heading"><div><h2>{group.title}</h2></div><span className="group-count">{group.fields.length} 项指标</span></div><div className="metric-grid">{group.fields.map((field) => <div className="metric-card" key={field}><span>{displayFieldLabel(field)}</span><strong>{displayValue(latest?.values[field])}</strong><div><a href="#realtime" onClick={() => setMetric(field)} aria-label={`查看${fieldLabels[field]}趋势`}>查看趋势 →</a></div></div>)}</div>{group.title === "负荷参数" && <p className="runtime-note">系统运行时间 <strong>{displayRaw(latest?.raw.system_run_time)}</strong></p>}</section>)}</div>}
+				{view === "metrics" && <div className="metric-groups">{metricGroups.map((group) => <section className="panel-card" key={group.title} aria-label={group.title}><div className="section-heading"><div><h2>{group.title}</h2></div><span className="group-count">{group.fields.length} 项指标</span></div><div className="metric-grid">{group.fields.map((field) => <div className="metric-card" key={field}><span>{displayFieldLabel(field)}</span><strong>{displayValue(latest?.values[field])}</strong><div><a href="#realtime" onClick={() => setMetric(field)} aria-label={`查看${fieldLabels[field]}趋势`}>查看趋势 →</a></div></div>)}</div></section>)}</div>}
 				{view === "codes" && <>
 					<section aria-label="当前代码" className="running-grid code-grid">{runningCards(codeFields)}</section>
 					<section className="panel-card" aria-label="代码采样记录"><div className="section-heading"><div><h2>代码采样记录</h2></div><span className="group-count">{data?.returned ?? 0} 条记录</span></div><div className="table-scroll code-table"><table><thead><tr><th>采集时间（北京时间）</th><th>记录编号</th>{codeFields.map((field) => <th key={field}>{displayFieldLabel(field)}</th>)}</tr></thead><tbody>{data?.records.map((record) => <tr key={record.id}><td>{displayTime(record.acquiredAt, false, true)}</td><td>{record.id}</td>{codeFields.map((field) => <td key={field} className={codeClassName(field, record.raw[field])}>{displayRawField(field, record.raw[field])}</td>)}</tr>)}</tbody></table></div>{!data?.records.length && <p className="empty-state">{loading ? "正在读取代码记录…" : "当前采样窗口暂无代码记录"}</p>}{data?.truncated && <p className="muted small window-count">响应已截断</p>}</section>
@@ -112,7 +110,7 @@ export function App() {
 				{view === "guide" && <div className="guide-grid">
 					<section className="panel-card"><div className="guide-heading"><h2>当前数据来源</h2><img className="source-illustration" src="/assets/illustrations/sampling-records.svg" alt="" aria-hidden="true" width="320" height="160" loading="lazy" /></div><p className="guide-value">G120 电机 {motor} <span className="source-badge">{sourceLabel}</span></p><p>{motor === 1 ? "电机 1 可在模拟数据和历史真实采集之间切换，两种来源分别展示。" : `电机 ${motor} 展示自己的模拟采样记录。`}</p><p>模拟数据也是已存入数据库的记录。切换侧边栏中的设备后，所有页面同步显示该电机的数据。</p></section>
 					<section className="panel-card"><h2>采样与时间</h2><p>采集时间表示设备数据的采样时间；入库时间表示记录写入数据库的时间；查询时间表示页面读取成功的时间。</p><p>页面时间统一显示为北京时间。每 5 秒检查一次更新，也可点击“刷新数据”。历史采集在没有新记录时会显示“本次无新采样”。</p></section>
-					<section className="panel-card"><h2>指标与代码</h2><p>展示 18 项数值指标和 {fields.length} 个字段。转速 rpm、电流 A、转矩 N·m、电压 V、功率 kW、温度 °C、负荷率 %，按参考图标注，不换算数值。脉冲频率单位、运行时间格式及额定值待确认。</p><p>故障码与报警码保留原始代码，零值仅显示 0，其他代码直接显示。控制字与状态字保留原值；缺失值显示“—”。</p><a className="text-link" href="#metrics">查看分组指标 →</a></section>
+					<section className="panel-card"><h2>指标与代码</h2><p>展示 18 项数值指标和 {fields.length} 个字段。转速 rpm、电流 A、转矩 N·m、电压 V、功率 kW、温度 °C、负荷率 %，按参考图标注，不换算数值。脉冲频率单位及额定值待确认。</p><p>故障码与报警码保留原始代码，零值仅显示 0，其他代码直接显示。控制字与状态字保留原值；缺失值显示“—”。</p><a className="text-link" href="#metrics">查看分组指标 →</a></section>
 					<section className="panel-card"><h2>曲线与仪表</h2><p>曲线展示最近 50、100 或 200 条记录中的有效时间采样。缺失数值处断线，无效采集时间不进入曲线。</p><p>仪表刻度由当前采样范围生成，恒定读数会扩展显示范围。仪表范围不代表安全阈值。采样明细保留记录的完整精度。</p><a className="text-link" href="#realtime">查看采样趋势 →</a></section>
 				</div>}
 			</main>
