@@ -87,7 +87,6 @@ h2 { font-size: 18px; font-weight: 650; }
 .parameter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; margin: 18px 0 0; }
 .parameter-grid > div { padding: 13px 0; border-top: 1px solid #edf1f6; min-width: 0; }
 .parameter-grid dt { color: var(--muted); font-size: 12px; }
-.parameter-grid small, th small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
 .parameter-grid dd { font-size: 14px; font-weight: 550; margin: 6px 0 0; overflow-wrap: anywhere; }
 summary { cursor: pointer; font-size: 14px; font-weight: 600; }
 .table-scroll { overflow: auto; max-height: 420px; margin-top: 18px; }
