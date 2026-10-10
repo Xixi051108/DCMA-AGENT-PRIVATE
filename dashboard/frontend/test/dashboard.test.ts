@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { displayTime, displayValue, displayRaw, displayRawField, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
+import { displayTime, displayValue, displayRaw, displayRawField, codeClassName, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
@@ -36,6 +36,16 @@ test("参考单位只作标注，故障报警仅0标为正常，其他代码和�
 	}
 	assert.equal(displayRawField("status_word", "0"), "0");
 	assert.equal(displayRawField("motor_load_rate", 0.123456789), "0.123456789");
+});
+
+test("只有非零故障码与报警码变色，正常、缺失和其他字段保持默认", () => {
+	for (const field of ["fault_code", "alarm_code"] as const) {
+		for (const value of [0, "0", null, undefined, ""]) assert.equal(codeClassName(field, value), undefined);
+		for (const value of [12, "12", "F01030", "A2062"]) {
+			assert.equal(codeClassName(field, value), field === "fault_code" ? "fault-code-active" : "alarm-code-active");
+		}
+	}
+	for (const field of ["control_word", "status_word", "speed_actual"] as const) assert.equal(codeClassName(field, 12), undefined);
 });
 
 test("仪表采样范围过滤缺失值，恒定值有非零跨度且保留负数", () => {

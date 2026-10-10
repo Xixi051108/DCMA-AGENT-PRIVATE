@@ -16,6 +16,11 @@ export function displayRawField(field: DashboardField, value: unknown): string {
 	return (field === "fault_code" || field === "alarm_code") && (value === 0 || value === "0") ? "0（正常）" : displayRaw(value);
 }
 
+export function codeClassName(field: DashboardField, value: unknown): string | undefined {
+	if (value === null || value === undefined || value === "" || value === 0 || value === "0") return undefined;
+	return field === "fault_code" ? "fault-code-active" : field === "alarm_code" ? "alarm-code-active" : undefined;
+}
+
 export function displayValue(value: unknown): string {
 	if (value === null || value === undefined || value === "") return "—";
 	return typeof value === "number" ? value.toLocaleString("zh-CN", { maximumFractionDigits: 4 }) : String(value);

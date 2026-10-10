@@ -33,6 +33,7 @@ if (-not (Test-Path database/.env)) { Copy-Item database/.env.example database/.
 - 侧边栏菜单：设备概览（运行快照与30字段完整参数）、实时数据（趋势与六个仪表）、运行指标（18项数值按运动、电气、功率、温度、负荷分组）、故障与报警（4项当前代码与代码采样记录）、采样明细（30字段原始记录，默认展开）、数据说明（当前来源、时间和读数规则）。默认打开实时数据；菜单支持地址片段与浏览器后退，切页回到顶部，保留设备、来源和采样条数选择。运行指标中的“查看趋势”跳转到对应曲线。
 - 选择“查看设备”后，全页只显示对应电机的数据，不同时展示其他电机概览或来源警告。电机 1 默认模拟数据，可改为历史真实采集；电机 2～4仅有模拟数据，来源栏显示“模拟数据”并禁用切换。返回电机 1 时保留它此前的来源选择。
 - 设备概览的“完整参数”按设备信息、采样信息、运动、电气、功率、温度、负荷与运行、故障与控制分成8组，保留全部30项原值；桌面双列分区、窄屏单列，标题下不再显示字段数量说明。
+- 非零故障码显示红色，非零报警码显示深黄色；0（正常）和缺失值保持默认颜色。运行卡片、完整参数、代码记录与采样明细使用相同规则，代码文字保持原值。
 - 趋势默认设定/实际转速对比，可切换转矩对比或全部 18 个数值字段单项查看。采样条数为 50 / 100 / 200，默认 100。时间升序；缺失点断线，不补 0。
 - 悬停查看北京时间、毫秒、记录编号和各曲线值；Tab 聚焦图表后用左右箭头查看相邻采样，Home / End 到首尾，Esc 关闭提示。采样明细支持 Enter 展开。
 - 打开和切设备、来源、采样条数立即请求。每 5 秒自动检查，查询未结束时跳过，手动刷新查询期间禁用。切换取消旧请求并拒绝旧响应回写。
@@ -60,7 +61,7 @@ npm run test
 npm run build
 ```
 
-当前三个命令通过，7 项测试通过。自动测试不读取本机 `.env`，接口测试清除配置，查询异常测试替换连接；覆盖单位标注、故障报警零值/原码/缺失、只读/参数检查、缺失表/字段、多设备、空表、全无效时间、时间数值整理、截断、0/负数、仪表跨度和曲线断点。构建输出为 `frontend/dist`，未配置发布服务。
+当前三个命令通过，8 项测试通过。自动测试不读取本机 `.env`，接口测试清除配置，查询异常测试替换连接；覆盖单位标注、故障报警零值/原码/缺失及变色规则、只读/参数检查、缺失表/字段、多设备、空表、全无效时间、时间数值整理、截断、0/负数、仪表跨度和曲线断点。构建输出为 `frontend/dist`，未配置发布服务。
 
 已执行真实数据库只读检查：
 
@@ -76,11 +77,14 @@ node database/test/live-check.ts
 npx --yes --package @playwright/cli playwright-cli -s=dcma open http://127.0.0.1:3000 --headed
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-real.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-edge.js
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-codes.js
 ```
 
 浏览器脚本覆盖六页菜单、浏览器后退、切页回到顶部、375/768/1366/1920布局、跨页只显示所选电机、来源正确对应、18项指标分组与趋势跳转、单位标注、隐藏status、故障报警0正常/原码、代码记录、30个中文字段、采样条数、悬停、键盘与自动/手动刷新；异常脚本只拦截浏览器请求，检查当前来源警告、失败保留/切换清空、空表、截断、缺失断线、慢请求与竞态，结束后移除拦截。截图位于 `output/playwright/`，工具缓存和截图均被 Git 忽略。
 
 开发返回样例位于 `database/test/dashboard-example.ts`，标明“开发样例”，只供测试使用。共享类型和31字段中文名在 `database/dashboard-types.ts`；页面逻辑在 `frontend/src/App.tsx`，请求与刷新在 `useDashboard.ts`，图表在 `components/LineChart.tsx`，仪表在 `components/Gauge.tsx`。
+
+`browser-codes.js` 仅拦截浏览器接口响应，模拟同时故障/报警、单独故障、单独报警、正常及缺失，检查四页的原始代码与实际字体颜色，以及表格中的混合记录；不写数据库，结束后移除拦截并恢复真实数据。模拟截图为 `output/playwright/codes-simulated.png`。
 
 ## 来源与未确认资料
 
