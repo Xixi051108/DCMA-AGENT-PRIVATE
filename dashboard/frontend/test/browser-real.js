@@ -6,7 +6,7 @@ async (page) => {
 		await page.setViewportSize({ width, height: width === 1366 ? 900 : 1080 });
 		check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}页面横向溢出`);
 		check(await page.locator(".gauge-card").count() === 6, "六个仪表缺失");
-		check(await page.locator(".motor-card").count() === 4, "四台概览缺失");
+		check(await page.getByRole("region", { name: "四台电机概览" }).count() === 0, "仍展示其他电机概览");
 		await page.screenshot({ path: `output/playwright/dashboard-${width}.png`, fullPage: true });
 	}
 	const chart = page.getByRole("group", { name: /设定转速与实际转速趋势/ });
@@ -34,25 +34,40 @@ async (page) => {
 		await page.getByRole("combobox", { name: "采样条数" }).selectOption(limit);
 		await page.getByText(new RegExp(`已返回 ${limit} 条记录`)).waitFor();
 	}
-	await page.getByRole("combobox", { name: "查看设备" }).selectOption("2");
-	await page.getByRole("region", { name: "当前设备详情" }).getByRole("heading", { name: "G120电机2", exact: true }).waitFor();
-	await page.locator(".motor-card").nth(0).click();
+	const device = page.getByRole("combobox", { name: "查看设备" });
+	const source = page.getByRole("combobox", { name: "数据来源", exact: true });
+	for (const motor of [2, 3, 4]) {
+		await device.selectOption(String(motor));
+		await page.getByRole("region", { name: "当前设备详情" }).getByRole("heading", { name: `G120电机${motor}`, exact: true }).waitFor();
+		const content = await page.locator("main").innerText();
+		check(![1, 2, 3, 4].some((other) => other !== motor && content.includes(`G120电机${other}`)), `电机${motor}页面混入其他电机`);
+		check(await source.isDisabled(), "模拟电机来源选择未禁用");
+		check(await source.inputValue() === "simulation", "模拟电机显示成历史来源");
+		check(await source.locator("option[value='history']").count() === 0, "模拟电机仍可选历史真实来源");
+	}
+	await device.selectOption("1");
 	await page.getByRole("region", { name: "当前设备详情" }).getByRole("heading", { name: "G120电机1", exact: true }).waitFor();
-	await page.getByRole("combobox", { name: "电机 1 数据来源" }).selectOption("history");
+	await source.selectOption("history");
 	await page.getByText("2026/01/14 18:27:24", { exact: true }).first().waitFor();
 	await page.getByRole("button", { name: "刷新数据", exact: true }).click();
 	await page.getByText("本次无新采样", { exact: true }).waitFor();
 	check((await page.locator(".device-detail").innerText()).includes("历史真实采集"), "历史来源标识错误");
+	await device.selectOption("2");
+	await page.getByRole("heading", { name: "G120电机2", exact: true }).waitFor();
+	check(await source.inputValue() === "simulation", "从历史电机1切到电机2时来源未更新");
+	await device.selectOption("1");
+	await page.getByText("2026/01/14 18:27:24", { exact: true }).first().waitFor();
+	check(await source.inputValue() === "history", "返回电机1未恢复该电机来源选择");
 	await page.locator("summary").focus();
 	await page.keyboard.press("Enter");
 	check(await page.locator("details").getAttribute("open") !== null, "采样明细键盘未展开");
 	check(await page.locator("table th").count() === 31, "原始记录缺字段");
 	await page.keyboard.press("Enter");
-	await page.getByRole("combobox", { name: "电机 1 数据来源" }).selectOption("simulation");
+	await source.selectOption("simulation");
 	await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();
 	await page.getByText("检测到新采样", { exact: true }).waitFor({ timeout: 12000 });
 	await page.setViewportSize({ width: 1366, height: 900 });
 	await page.locator(".chart-surface svg").hover({ position: { x: 450, y: 120 } });
 	await page.screenshot({ path: "output/playwright/trend-hover.png" });
-	console.log("PASS: 1366/1920无横向溢出；6仪表/4概览/31字段；悬停、键盘、18指标、50/100/200、设备/来源切换、手动刷新、真实历史无新采样、模拟自动新采样。");
+	console.log("PASS: 1366/1920无横向溢出；仅显示所选电机、来源对应正确；6仪表/31字段、悬停、键盘、18指标、50/100/200、手动与自动刷新。");
 }

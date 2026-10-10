@@ -11,6 +11,7 @@ async (page) => {
 		data.latest.values.current_actual = null;
 		data.latest.raw.air_intake_temp = -200;
 		data.latest.raw.feedback_power = 0.123456789;
+		data.warnings = ["real_data_04：其他电机的验收警告"];
 		data.samples = data.samples.slice(0, 4);
 		data.samples.forEach((sample, index) => { sample.values.speed_actual = index === 1 ? null : index - 2; });
 		if (mode === "empty") { data.latest = null; data.records = []; data.samples = []; data.returned = 0; data.sources.forEach((source) => { source.latest = null; source.message = "暂无采样记录"; }); }
@@ -31,6 +32,7 @@ async (page) => {
 	try {
 		await page.goto("http://127.0.0.1:3000");
 		await page.getByRole("heading", { name: "验收电机1", exact: true }).waitFor();
+		check(await page.getByText("real_data_04：其他电机的验收警告", { exact: true }).count() === 0, "显示了未选电机的警告");
 		check(await page.locator(".gauge-value").nth(0).innerText() === "0", "0被当作缺失");
 		check(await page.locator(".gauge-value").nth(1).innerText() === "—", "缺失电流未显示破折号");
 		check((await page.locator(".parameter-grid").innerText()).includes("-200"), "-200未保留");
@@ -73,6 +75,7 @@ async (page) => {
 		await page.getByRole("combobox", { name: "采样条数" }).selectOption("200");
 		await page.getByRole("combobox", { name: "查看设备" }).selectOption("4");
 		await page.getByRole("heading", { name: "验收电机4", exact: true }).waitFor();
+		await page.getByText("real_data_04：其他电机的验收警告", { exact: true }).waitFor();
 		await page.screenshot({ path: "output/playwright/edge-cases.png" });
 		console.log("PASS: 0/缺失/-200/原值精度、缺失断线、同选择失败保留、切换失败清空、空表、截断、慢请求不重叠、取消旧请求和竞态保护。");
 	} finally {
