@@ -1,5 +1,6 @@
 import { createServer, type ServerResponse } from "node:http";
-import { databaseError, getDatabaseCatalog, readDatabaseRows } from "./database.ts";
+import { databaseError, getDatabaseCatalog, readDatabaseRows, readDashboard } from "./database.ts";
+import { dashboardTables, type DashboardTable } from "./dashboard-types.ts";
 
 function json(response: ServerResponse, status: number, value: unknown): void {
 	response.writeHead(status, {
@@ -25,7 +26,7 @@ export function createDatabaseServer() {
 			return;
 		}
 		const path = new URL(request.url ?? "/", `http://${host}`);
-		if (!["/api/database/catalog", "/api/database/rows"].includes(path.pathname)) {
+		if (!["/api/database/catalog", "/api/database/rows", "/api/database/dashboard"].includes(path.pathname)) {
 			json(response, 404, { error: "接口不存在" });
 			return;
 		}
@@ -34,6 +35,21 @@ export function createDatabaseServer() {
 			return;
 		}
 		void (async () => {
+			if (path.pathname === "/api/database/dashboard") {
+				const table = path.searchParams.get("table") ?? "real_data_01";
+				const limit = Number(path.searchParams.get("limit") ?? 100);
+				if (!dashboardTables.includes(table as DashboardTable) || ![50, 100, 200].includes(limit) ||
+					[...path.searchParams.keys()].some((key) => !["table", "limit"].includes(key))) {
+					json(response, 400, { error: "仅支持五张已确认的数据表，采样条数必须为 50、100 或 200。" });
+					return;
+				}
+				const controller = new AbortController();
+				response.once("close", () => { if (!response.writableEnded) controller.abort(); });
+				const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+				const data = await readDashboard(table as DashboardTable, limit as 50 | 100 | 200, signal);
+				if (!response.destroyed) json(response, 200, data);
+				return;
+			}
 			if (path.pathname === "/api/database/catalog") {
 				json(response, 200, await getDatabaseCatalog(path.searchParams.has("refresh")));
 				return;
@@ -46,6 +62,6 @@ export function createDatabaseServer() {
 				return;
 			}
 			json(response, 200, await readDatabaseRows({ schema, table, limit }));
-		})().catch((error: unknown) => json(response, 503, { error: databaseError(error) }));
+		})().catch((error: unknown) => { if (!response.destroyed) json(response, 503, { error: databaseError(error) }); });
 	});
 }

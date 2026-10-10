@@ -1,5 +1,7 @@
 import { createPool, escapeId, type Pool, type PoolConnection, type RowDataPacket } from "mysql2/promise";
 import type { DatabaseCatalog, DatabaseRows, DatabaseTable } from "./types.ts";
+import { collectionTimeSql, makeDashboardData, normalizeRecord } from "./dashboard-data.ts";
+import { dashboardTables, type DashboardData, type DashboardSource, type DashboardTable } from "./dashboard-types.ts";
 
 const sources = ["real_data", "real_data_01", "real_data_02", "real_data_03", "real_data_04"];
 let pool: Pool | undefined;
@@ -61,6 +63,7 @@ export function databaseError(error: unknown): string {
 	if (code === "ENOTFOUND") return "MySQL 地址无法解析。";
 	if (error instanceof Error && error.message === "MYSQL_NOT_CONFIGURED") return "尚未配置 MySQL 后端连接。";
 	if (error instanceof Error && error.message === "MYSQL_INVALID_PORT") return "MySQL 端口配置无效。";
+	if (error instanceof Error && error.message === "DASHBOARD_RESULT_TOO_LARGE") return "单条记录超过展板结果大小限制，请通过原始记录预览核对数据。";
 	return "MySQL 未连接或查询失败；请确认校园网/VPN、3306 端口及数据库权限。没有返回可用于分析的数据。";
 }
 
@@ -218,4 +221,44 @@ export async function readDatabaseRows(options: DatabaseReadOptions, signal?: Ab
 export async function closeDatabase(): Promise<void> {
 	await pool?.end();
 	pool = undefined;
+}
+
+export async function readDashboard(table: DashboardTable, limit: 50 | 100 | 200, signal?: AbortSignal): Promise<DashboardData> {
+	if (!dashboardTables.includes(table) || ![50, 100, 200].includes(limit)) throw new Error("无效的展板参数");
+	const catalog = (await listDatabaseTables()).filter((item) => item.schema === "dcma");
+	return readOnly(async (connection) => {
+		const summaries: DashboardSource[] = [];
+		let selectedRows: Record<string, unknown>[] = [];
+		let hasMore = false;
+		for (const name of dashboardTables) {
+			signal?.throwIfAborted();
+			const metadata = catalog.find((item) => item.name === name);
+			const source: DashboardSource = {
+				table: name, deviceIndex: name === "real_data" ? 1 : Number(name.slice(-2)),
+				kind: name === "real_data" ? "acquired" : "simulation", available: !!metadata, latest: null, message: "",
+			};
+			summaries.push(source);
+			if (!metadata) { source.message = "数据表不存在或不可读取"; continue; }
+			if (["id", "timestamp", "device_name", "inverter_name"].some((field) => !metadata.columns.some((column) => column.name === field))) {
+				source.message = "缺少记录编号、采集时间或设备标识字段"; continue;
+			}
+			const qualified = `${escapeId("dcma")}.${escapeId(name)}`;
+			const [identities] = await connection.query<RowDataPacket[]>({
+				sql: `SELECT DISTINCT device_name, inverter_name FROM ${qualified}
+				WHERE device_name IS NOT NULL AND TRIM(device_name) <> '' AND inverter_name IS NOT NULL AND TRIM(inverter_name) <> '' LIMIT 2`, timeout: 5000,
+			});
+			if (identities.length > 1) {
+				source.message = "同一来源包含多个设备或变频器，已停止混合展示，请核对表内设备关系"; continue;
+			}
+			if (!identities.length) { source.message = "暂无采样记录"; continue; }
+			const [rows] = await connection.execute<RowDataPacket[]>({
+				sql: `SELECT *, ${collectionTimeSql} AS __collection_ms FROM ${qualified}
+				WHERE device_name <=> ? AND inverter_name <=> ? ORDER BY __collection_ms DESC, id DESC LIMIT ?`, timeout: 5000,
+			}, [identities[0].device_name, identities[0].inverter_name, name === table ? limit + 1 : 1]);
+			source.latest = rows[0] ? normalizeRecord(rows[0]) : null;
+			if (!source.latest?.acquiredAt) source.message = "采集时间无法解析，保留原始记录，不进入时间曲线";
+			if (name === table) { selectedRows = rows.slice(0, limit); hasMore = rows.length > limit; }
+		}
+		return makeDashboardData(table, limit, summaries, selectedRows, hasMore);
+	}, signal);
 }
