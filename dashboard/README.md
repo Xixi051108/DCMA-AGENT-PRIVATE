@@ -1,28 +1,12 @@
-# DCMA 独立监控展板：开发准备
+# DCMA 电机监控展板
 
-本项目位于个人仓库 `Xixi051108/DCMA-AGENT-PRIVATE` 的 `main` 分支。后续本对话的代码与文件都保存在个人仓库；公用仓库只作为读取和复制来源。
+独立项目位于个人仓库 `Xixi051108/DCMA-AGENT-PRIVATE` 的 `main`。前端为 React / TypeScript / Vite / Tailwind，后端为 Node / MySQL，只查询 `dcma` 库的五张已确认表。无需启动 Pi SDK。
 
-当前完成前端开发环境和数据库只读接口的准备，页面仅提供连接检查、字段与原始记录预览。完整监控展板、设备筛选、采集时间统一、指标映射和定时刷新尚未实现；数据库未配置时显示明确状态，不使用示例数据替代查询结果。
+已实现四台电机概览、单台详情、六个半圆仪表、趋势曲线、运行信息、31 个原始字段及可展开采样明细。正式页面只显示接口查询结果，不会以开发样例替代数据库。
 
-## 文件位置
+## 启动
 
-- `frontend/`：React、TypeScript、Vite 页面开发目录，入口为 `src/App.tsx`。
-- `frontend/src/components/DatabasePanel.tsx`：连接检查、表结构与最多 20 行记录预览。
-- `frontend/src/components/LineChart.tsx`：已复制的 SVG 折线图组件，供后续页面复用，当前未接入数据。
-- `frontend/reference/RightPanel.tsx`：公用项目原始设备卡片布局，仅作参考，不参与编译和运行。
-- `database/`：独立 Node/MySQL 后端、配置示例和接口测试。
-- `database/types.ts`：数据库返回结构，前端通过类型导出共用，不包含连接配置。
-
-## 安装与启动
-
-需要 Node.js 22.18 或更新版本。无需安装或启动 Pi SDK。
-
-```powershell
-cd D:\DCMA-Agent\dashboard
-npm ci --ignore-scripts
-```
-
-在两个终端中分别执行：
+当前本机环境和 `database/.env` 已准备完成，在两个终端分别运行：
 
 ```powershell
 cd D:\DCMA-Agent\dashboard
@@ -34,29 +18,37 @@ cd D:\DCMA-Agent\dashboard
 npm run dev:frontend
 ```
 
-浏览器打开 <http://127.0.0.1:3000>。前端开发服务器把 `/api/database` 请求转发到本机 `3001` 端口的后端。两个服务均仅监听本机；Ctrl+C 分别停止服务。
+打开 <http://127.0.0.1:3000>。前端将 `/api/database` 转发到本机 `3001` 的后端，两个服务仅监听本机；分别按 Ctrl+C 停止。
 
-## 数据库配置
+新电脑需要 Node.js 22.18 或更新版本，在 `dashboard` 运行 `npm ci --ignore-scripts`。只有本机配置不存在时才复制示例：
 
 ```powershell
-Copy-Item database/.env.example database/.env
+if (-not (Test-Path database/.env)) { Copy-Item database/.env.example database/.env }
 ```
 
-在本机编辑 `database/.env`，填写 MySQL 用户、密码和实际库名，再重启后端。`.env` 被 Git 忽略，凭据仅由后端读取，禁止放入前端或提交到 Git。示例已填写确认过的主机 `10.108.12.164`、端口 `3306`，账号密码为空，不预填未知库名。
+编辑 `database/.env` 填写数据库账号密码，库名为 `dcma`，主机和端口已在示例中填写。需要校园网/VPN能够访问数据库。修改配置后重启后端；不要覆盖已有 `.env`，不要将凭据放进前端、截图或 Git。
 
-`MYSQL_DATABASE` 可限制到实际库名；留空时，仅从账号可访问的库中发现 `real_data`、`real_data_01` 至 `real_data_04` 五张已知表。需要所在网络能访问 MySQL；Navicat 的连接成功记录不能替代此后端的实际联调结果。
+## 页面操作与数据规则
 
-## 已准备接口
+- 点击概览卡片或选择设备更新下方详情。电机 1 默认模拟数据，可改为历史真实采集；电机 2～4使用各自模拟表，来源开关只作用于电机 1。
+- 趋势默认设定/实际转速对比，可切换转矩对比或全部 18 个数值字段单项查看。采样条数为 50 / 100 / 200，默认 100。时间升序；缺失点断线，不补 0。
+- 悬停查看北京时间、毫秒、记录编号和各曲线值；Tab 聚焦图表后用左右箭头查看相邻采样，Home / End 到首尾，Esc 关闭提示。采样明细支持 Enter 展开。
+- 打开和切设备、来源、采样条数立即请求。每 5 秒自动检查，查询未结束时跳过，手动刷新查询期间禁用。切换取消旧请求并拒绝旧响应回写。
+- 同一选择刷新失败保留上次成功结果并提示；首次或切换失败不展示其他设备的旧值。空表、无效时间、截断均有提示。
+- 六个仪表依据当前有效采样范围生成刻度；恒定值扩展为非零跨度，缺失值显示“—”。范围不代表额定量程或安全阈值。
+- 单位均待确认，不换算原始值；卡片读数最多显示 4 位小数，完整参数和采样明细保留原值。有效 0、负值及 `air_intake_temp=-200` 保留。状态、故障、报警、控制字、状态字和运行时间不自行解释。
+- 采集时间、入库时间、接口查询时间分别显示；日期文本暂按北京时间解释，13 位时间戳按毫秒解析。无效采集时间不进入曲线，不用入库时间替代。
+- 接口连接、数据来源和采集更新状态分别展示。“检测到新采样”来自相邻成功查询的记录变化；“本次无新采样”不等于连接失败。当前真实表为 2026-01-14 的历史采集。
 
-| 接口 | 用途 |
+## 只读接口
+
+| 接口 | 用途与限制 |
 |---|---|
-| `GET /api/database/catalog` | 返回配置、连接状态和五张已知表的字段结构 |
-| `GET /api/database/catalog?refresh=1` | 重新检查目录，不使用 60 秒目录缓存 |
-| `GET /api/database/rows?schema=实际库名&table=real_data_01&limit=20` | 返回所选表的有限原始记录窗口 |
+| `GET /api/database/dashboard?table=real_data_01&limit=100` | 五个来源摘要、所选最新值、近期采样、原始记录和查询时间；limit仅支持50/100/200，响应上限512000字节，过大时明确截断较早记录 |
+| `GET /api/database/catalog` | 配置与连接状态、已知表的字段结构；`?refresh=1`重新检查 |
+| `GET /api/database/rows?schema=dcma&table=real_data_01&limit=20` | 旧原始预览接口保留，1～200行/64KB；不作为趋势数据接口 |
 
-接口仅接受 GET，不接受任意 SQL。查询使用只读事务、参数绑定与标识符转义；行数范围 1～200，记录数据限制 64KB，查询超时 5 秒。接口返回查询时间；原始 `timestamp` 和 `create_time` 保留原值，不把入库时间或刷新时间转换成采集时间。当前排序沿用源代码，优先日期时间类型字段，再使用主键；记录预览不是按采集时间整理好的趋势接口。
-
-`real_data_01`～`real_data_04` 是模拟数据；`real_data` 是短暂真实采集数据。设备关系、持续写入情况、单位、时区、运行时间格式和状态码仍需核对。完整页面范围参考根目录 `HANDOFF.md`；`监控展板开发说明.md` 的字段说明可参考，其中两人分工和公用仓库协作安排已过时。
+`real_data_01`～`04`对应电机1～4的模拟表，`real_data`对应电机1历史真实采集。展板固定只读 `dcma`，不接受任意SQL或写入。查询使用只读事务、参数绑定、5秒SQL超时和15秒展板请求时限；浏览器18秒超时。发现一个来源有多个设备/变频器时停止混合展示；无设备标识记录被排除。
 
 ## 验证
 
@@ -66,23 +58,32 @@ npm run test
 npm run build
 ```
 
-接口测试不读取本机 `.env`，并在独立测试进程中清除 MySQL 配置，验证无凭据状态、只读限制、参数和来源检查，不连接真实数据库。构建输出位于 `frontend/dist`；当前仅整理开发启动流程，未配置部署服务。
+当前三个命令通过，6 项测试通过。自动测试不读取本机 `.env`，接口测试清除配置，查询异常测试替换连接；覆盖只读/参数检查、缺失表/字段、多设备、空表、全无效时间、时间数值整理、截断、0/负数、仪表跨度和曲线断点。构建输出为 `frontend/dist`，未配置发布服务。
 
-## 复制来源与调整
+已执行真实数据库只读检查：
 
-来源为公用仓库 `JACK-Chen415/DCMA-pi-Agent` 的 `dashboard-frontend` 分支，提交 `424bf0ddd005f620cce29e3acc009f4ee8284f9e`。本次只读取本地 `pi/` 副本，并核对公用远程提交一致；未修改或推送公用仓库。
+```powershell
+node database/test/live-check.ts
+```
 
-| 原文件（相对公用仓库） | 个人仓库用途及调整 |
-|---|---|
-| `packages/web/src/components/DatabasePanel.tsx` | 复制为预览入口；取消未验证的“实时”标注 |
-| `packages/web/src/components/LineChart.tsx` | 原样复制，单独保留需要的 `ChartPoint` 类型 |
-| `packages/web/src/components/RightPanel.tsx` | 原样保存于 `frontend/reference/`，不带入示例设备和聊天行为 |
-| `packages/web/src/main.tsx` | 原样复制 React 入口 |
-| `packages/web/src/database-types.ts` | 原样复制为 `database/types.ts`，供前后端共用 |
-| `packages/web/tailwind.config.js`、`postcss.config.js` | 保留原主题配置；PostCSS 和 CSS 入口适配 Tailwind 4，避免原构建依赖的已知漏洞 |
-| `packages/web/public/assets/logo.png` | 原样复制 DCMA 标志 |
-| `packages/web/src/index.css`、`index.html` | 提取基础样式与入口，适配独立预览页面 |
-| `packages/web/database.ts` | 提取连接、目录和只读查询，移除 Pi 工具注册；限定五张已知表 |
-| `packages/web/server.ts`、`package.json` | 参考数据库 HTTP 接口和依赖，整理独立服务与工作区命令 |
+该命令显式读取本机 `.env`，仅执行只读事务与 SELECT，检查 SQL/JS 时间一致性、取消、并发及200条结果，不打印凭据。与离线自动测试分开运行。
 
-原 Web 工作台的相关提交作者为 Jahon。保留源仓库 MIT 许可证于 `LICENSE`，不复制 Pi 模型配置、聊天功能、凭据、依赖目录或 Git 元数据。
+浏览器验收使用 Playwright CLI，先启动前后端：
+
+```powershell
+npx --yes --package @playwright/cli playwright-cli -s=dcma open http://127.0.0.1:3000 --headed
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-real.js
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-edge.js
+```
+
+两份脚本已通过：真实接口检查1366/1920布局、18指标、采样条数、设备/来源切换、悬停、键盘与自动/手动刷新；异常脚本只拦截浏览器请求，检查失败保留/切换清空、空表、截断、缺失断线、慢请求与竞态，结束后移除拦截。截图位于 `output/playwright/`，工具缓存和截图均被 Git 忽略。
+
+开发返回样例位于 `database/test/dashboard-example.ts`，标明“开发样例”，只供测试使用。共享类型和31字段中文名在 `database/dashboard-types.ts`；页面逻辑在 `frontend/src/App.tsx`，请求与刷新在 `useDashboard.ts`，图表在 `components/LineChart.tsx`，仪表在 `components/Gauge.tsx`。
+
+## 来源与未确认资料
+
+基础预览、样式、DCMA标志和接口最初复制/提取自公用仓库 `JACK-Chen415/DCMA-pi-Agent` 的 `dashboard-frontend` 分支，提交 `424bf0ddd005f620cce29e3acc009f4ee8284f9e`。本轮只修改个人独立项目；公用嵌套 `pi/` 未修改。折线图已调整为展板多曲线交互；原 `DatabasePanel` 保留，`frontend/reference/RightPanel.tsx`仅作参考，不参与编译。
+
+原相关提交作者为 Jahon，MIT许可证保留于 `LICENSE`。未复制模型配置、聊天、凭据或Git元数据。
+
+单位、代码映射、额定值、运行时间格式及特殊值含义等待数据负责人资料；当前均有明确展示规则，不阻塞已确认功能。未实施部署、推送、数据库写入或未要求的聊天、健康评分、故障统计等功能。当前范围和提交记录见根目录 `HANDOFF.md` 第0节，开发说明第2节仍可用作字段参考。
