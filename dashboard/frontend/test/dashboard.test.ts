@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { displayTime, displayValue, displayRaw, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
+import { displayTime, displayValue, displayRaw, displayRawField, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
@@ -18,6 +18,24 @@ test("展板显示保留0、负数、原始代码并明确缺失值和北京时�
 	assert.ok(example.samples.every((sample, index) => index === 0 || sample.acquiredAt >= example.samples[index - 1].acquiredAt));
 	assert.notEqual(sampleIdentity(example.latest), sampleIdentity(null));
 	assert.match(example.latest!.raw.device_name!, /开发样例/);
+});
+
+test("参考单位只作标注，故障报警仅0标为正常，其他代码和缺失保留", () => {
+	assert.equal(displayFieldLabel("speed_actual"), "实际转速（rpm）");
+	assert.equal(displayFieldLabel("torque_actual"), "实际转矩（N·m）");
+	assert.equal(displayFieldLabel("inverter_load_rate"), "变频器负荷率（%）");
+	assert.equal(fieldUnits.pulse_frequency, undefined);
+	assert.equal(fieldUnits.system_run_time, undefined);
+	for (const field of ["fault_code", "alarm_code"] as const) {
+		assert.equal(displayRawField(field, 0), "0（正常）");
+		assert.equal(displayRawField(field, "0"), "0（正常）");
+		assert.equal(displayRawField(field, "A2062"), "A2062");
+		assert.equal(displayRawField(field, "F01030"), "F01030");
+		assert.equal(displayRawField(field, 12), "12");
+		for (const value of [null, undefined, ""]) assert.equal(displayRawField(field, value), "—");
+	}
+	assert.equal(displayRawField("status_word", "0"), "0");
+	assert.equal(displayRawField("motor_load_rate", 0.123456789), "0.123456789");
 });
 
 test("仪表采样范围过滤缺失值，恒定值有非零跨度且保留负数", () => {
