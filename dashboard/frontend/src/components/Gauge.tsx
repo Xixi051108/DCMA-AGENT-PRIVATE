@@ -1,16 +1,16 @@
 import { useId } from "react";
 import { displayValue, sampleRange } from "../dashboard-view.ts";
 
-export function Gauge({ label, unit, value, samples }: { label: string; unit: string; value: number | null; samples: (number | null)[] }) {
+export function Gauge({ label, unit, value, samples, range: fixedRange }: { label: string; unit: string; value: number | null; samples: (number | null)[]; range?: { min: number; max: number } }) {
 	const titleId = useId();
-	const range = sampleRange(samples);
+	const range = fixedRange ?? sampleRange(samples);
 	const ratio = value !== null && range ? Math.max(0, Math.min(1, (value - range.min) / (range.max - range.min))) : null;
 	const point = (fraction: number, radius: number) => ({ x: 100 - Math.cos(fraction * Math.PI) * radius, y: 96 - Math.sin(fraction * Math.PI) * radius });
 	const tip = point(ratio ?? 0, 57);
 	return <article className="panel-card gauge-card">
 		<h3>{label}</h3>
 		<svg viewBox="0 0 200 112" role="img" aria-labelledby={titleId}>
-			<title id={titleId}>{label}：{displayValue(value)} {unit}。{range ? `采样范围 ${displayValue(range.min)} 至 ${displayValue(range.max)} ${unit}` : "暂无有效采样范围"}</title>
+			<title id={titleId}>{label}：{displayValue(value)} {unit}。{range ? `${fixedRange ? "量程" : "采样范围"} ${displayValue(range.min)} 至 ${displayValue(range.max)} ${unit}` : "暂无有效采样范围"}</title>
 			<path d="M 24 96 A 76 76 0 0 1 176 96" fill="none" stroke="#e8eef8" strokeWidth="12" strokeLinecap="round" />
 			{ratio !== null && <path d="M 24 96 A 76 76 0 0 1 176 96" fill="none" stroke="#2563eb" strokeWidth="12" strokeLinecap="round" pathLength="1" strokeDasharray={`${ratio} 1`} />}
 			{range && [0, .25, .5, .75, 1].map((fraction) => {
@@ -23,6 +23,6 @@ export function Gauge({ label, unit, value, samples }: { label: string; unit: st
 		</svg>
 		<strong className="gauge-value">{displayValue(value)}</strong>
 		<p className="small muted">{unit}</p>
-		<p className="gauge-range">{range ? "采样范围" : "暂无有效采样范围"}</p>
+		<p className="gauge-range">{fixedRange ? "量程" : range ? "采样范围" : "暂无有效采样范围"}</p>
 	</article>;
 }

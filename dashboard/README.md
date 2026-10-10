@@ -41,7 +41,7 @@ if (-not (Test-Path database/.env)) { Copy-Item database/.env.example database/.
 - 悬停查看北京时间、毫秒、记录编号和各曲线值；Tab 聚焦图表后用左右箭头查看相邻采样，Home / End 到首尾，Esc 关闭提示。采样明细支持 Enter 展开。
 - 打开和切设备、来源、采样条数立即请求。每 5 秒自动检查，查询未结束时跳过，手动刷新查询期间禁用。切换取消旧请求并拒绝旧响应回写。
 - 同一选择刷新失败保留上次成功结果并提示；首次或切换失败不展示其他设备的旧值。空表、无效时间、截断均有提示。
-- 六个仪表依据当前有效采样范围生成刻度；恒定值扩展为非零跨度，缺失值显示“—”。范围不代表额定量程或安全阈值。
+- 仪表按用户参考图固定五项左右极值：实际转速−1500～1500 rpm、实际电流0～3.3 A、直流母线电压0～1200 V、变频器/电机温度均0～150 °C；刻度不再随采样窗口变化。用户确认实际转矩仍保留原有N·m采样范围，恒定值扩展为非零跨度；不改为参考图中的转矩利用率百分比。超量程时仅指针停在边界，数字保留实际读数，缺失显示“—”且不画指针；固定刻度仍显示。显示量程不代表安全阈值。
 - 单位参考用户截图：转速 rpm、电流 A、转矩 N·m、电压 V、功率 kW、温度 °C、负荷率 %，同类字段统一标注，不进行数值换算；脉冲频率单位待确认。卡片读数最多显示4位小数，参数和明细保留原值，有效0、负值及 `air_intake_temp=-200` 保留。`status` 和 `system_run_time` 在页面各处隐藏，数据库与接口仍保留31个原始字段，页面展示其余29个字段；字段名称仅显示中文及单位。故障码、报警码的零值仅显示“0”，不附加“正常”文字，非零保留原始代码，缺失显示“—”，控制字/状态字不解释。
 - 采集时间、入库时间、接口查询时间分别显示；日期文本暂按北京时间解释，13 位时间戳按毫秒解析。无效采集时间不进入曲线，不用入库时间替代。
 - 接口连接、数据来源和采集更新状态分别展示。“检测到新采样”来自相邻成功查询的记录变化；“本次无新采样”不等于连接失败。当前真实表为 2026-01-14 的历史采集。
@@ -83,6 +83,7 @@ npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=f
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-edge.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-codes.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-history.js
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-gauges.js
 ```
 
 浏览器脚本覆盖六页菜单、浏览器后退、切页回到顶部、375/768/1366/1920布局、跨页只显示所选电机、来源正确对应、18项指标分组与趋势跳转、单位标注、隐藏status和系统运行时间、故障报警零值0/原码、代码记录、29个中文字段、采样条数、悬停、键盘与自动/手动刷新；异常脚本只拦截浏览器请求，检查当前来源警告、失败保留/切换清空、空表、截断、缺失断线、慢请求与竞态，结束后移除拦截。截图位于 `output/playwright/`，工具缓存和截图均被 Git 忽略。真实验收和代码模拟脚本使用 Chrome，结束或失败后撤销固定测试视口并恢复原窗口尺寸与状态，正常浏览时页面随窗口调整。
@@ -90,6 +91,8 @@ npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=f
 开发返回样例位于 `database/test/dashboard-example.ts`，标明“开发样例”，只供测试使用。共享类型和31字段中文名在 `database/dashboard-types.ts`；页面逻辑在 `frontend/src/App.tsx`，请求与刷新在 `useDashboard.ts`，图表在 `components/LineChart.tsx`，仪表在 `components/Gauge.tsx`。
 
 `browser-codes.js` 仅拦截浏览器响应，模拟五种代码状态，检查四页的原始代码与字体颜色、混合采样、类型/代码筛选、重置及四档布局。`browser-history.js` 模拟61条事件，验证完整起止/持续时间、未结束、北京时间与重叠范围、无效范围/空结果、分页、刷新及采样条数独立、失败保留、设备切换取消和四档布局。两个脚本不写数据库，结束或失败后移除拦截、恢复真实数据与原生窗口；截图在 `output/playwright/`。
+
+`browser-gauges.js`验证五项固定量程、中点指针、上下界外读数不裁剪、缺失无指针、实际转矩保留采样范围、采样条数切换及375/768/1366/1920布局。仅拦截浏览器响应，结束恢复真实数据与原生窗口，不写数据库；截图`gauges-fixed.png`已目视检查。本次量程修改的check、build及该浏览器验收通过，未重复运行单元测试。
 
 ## 来源与未确认资料
 
