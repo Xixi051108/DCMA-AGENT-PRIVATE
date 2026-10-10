@@ -45,7 +45,7 @@
 
 `id`、`timestamp`、`device_name`、`inverter_name`、`date`、`time`、`status`、`fault_code`、`alarm_code`、`control_word`、`status_word`、`dc_voltage`、`speed_setpoint`、`speed_actual`、`current_actual`、`torque_setpoint`、`torque_actual`、`air_intake_temp`、`motor_temp`、`inverter_temp`、`actual_power`、`field_current`、`torque_current`、`system_run_time`、`inverter_radiator_temp`、`inverter_load_rate`、`motor_load_rate`、`pulse_frequency`、`motor_power`、`feedback_power`、`create_time`。
 
-类型、中文解释和待确认单位见 `D:\DCMA-Agent\监控展板两人分工.md`。该文档已创建，字段与基础文件说明仍有用，但 A/B 分工、公用仓库开发和分支协作安排已过时。本次不修改或删除该文档。
+类型、中文解释和待确认单位见 `D:\DCMA-Agent\监控展板开发说明.md`。文档已按用户要求从“监控展板两人分工.md”更名，标题同步更新；字段与基础文件说明仍有用，但 A/B 分工、公用仓库开发和分支协作安排已过时。
 
 ### 0.3 已完成准备、未完成与下一步
 
@@ -74,7 +74,7 @@
 - 在 `dashboard` 实际执行并通过 `npm run check`、`npm run test`、`npm run build`。接口测试覆盖无凭据状态、GET 限制、参数校验、Host/Origin 检查与未知接口；测试清除 MySQL 配置，不查询真实数据库。
 - 初次类型声明错误已修复；本机 HTTP 测试需要在沙箱外运行。Host 测试改用原生 HTTP 客户端，避免 fetch 自动处理 Host 导致测试失真。
 - 已核对个人远程 `main` 和公用远程 `dashboard-frontend`；后者与本地 Pi HEAD 一致。再次检查 Pi 工作区干净，未修改其内容或 Git 分支。
-- 个人 `main` 的准备代码提交 `dc97768a2` 已成功推送到 `https://github.com/Xixi051108/DCMA-AGENT-PRIVATE.git`，包含 `dashboard/`、更新的 `HANDOFF.md` 和此前对话产生的 `监控展板两人分工.md`。本文随后补充成功状态；最终文档提交以 Git 日志为准。该旧文档的字段说明保留，两人分工已过时，不将旧协作安排作为当前指令。
+- 个人 `main` 的准备代码提交 `dc97768a2` 已成功推送到 `https://github.com/Xixi051108/DCMA-AGENT-PRIVATE.git`，包含 `dashboard/`、更新的 `HANDOFF.md` 和此前对话产生的开发说明文档（现名 `监控展板开发说明.md`）。本文随后补充成功状态；最终文档提交以 Git 日志为准。该文档的字段说明保留，两人分工已过时，不将旧协作安排作为当前指令。
 - 未执行真实 MySQL 联调或模型调用；第 4～11 节环境、认证及运行结果为此前学习记录，本次未重复验证。
 
 ### 0.5 协作注意事项
