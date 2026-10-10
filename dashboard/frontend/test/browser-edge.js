@@ -10,6 +10,7 @@ async (page) => {
 		data.latest.values.speed_actual = 0;
 		data.latest.values.current_actual = null;
 		data.latest.raw.air_intake_temp = -200;
+		data.latest.values.air_intake_temp = -200;
 		data.latest.raw.feedback_power = 0.123456789;
 		data.warnings = ["real_data_04：其他电机的验收警告"];
 		data.samples = data.samples.slice(0, 4);
@@ -35,8 +36,14 @@ async (page) => {
 		check(await page.getByText("real_data_04：其他电机的验收警告", { exact: true }).count() === 0, "显示了未选电机的警告");
 		check(await page.locator(".gauge-value").nth(0).innerText() === "0", "0被当作缺失");
 		check(await page.locator(".gauge-value").nth(1).innerText() === "—", "缺失电流未显示破折号");
+		const nav = page.getByRole("navigation", { name: "监控页面" });
+		await nav.getByRole("link", { name: "设备概览", exact: true }).click();
 		check((await page.locator(".parameter-grid").innerText()).includes("-200"), "-200未保留");
 		check((await page.locator(".parameter-grid").innerText()).includes("0.123456789"), "原始数值被舍入");
+		await nav.getByRole("link", { name: "运行指标", exact: true }).click();
+		check((await page.getByRole("region", { name: "温度参数" }).innerText()).includes("-200"), "分组指标丢失特殊值");
+		check((await page.getByRole("region", { name: "电气参数" }).innerText()).includes("—"), "分组指标缺失值未标明");
+		await nav.getByRole("link", { name: "实时数据", exact: true }).click();
 		const path = await page.locator(".chart-surface svg path").nth(1).getAttribute("d");
 		check((path.match(/M/g) || []).length === 2, "缺失值跨点连线");
 		mode = "fail";
@@ -51,6 +58,12 @@ async (page) => {
 		await page.getByRole("button", { name: "刷新数据", exact: true }).click();
 		await page.getByText("暂无采样记录", { exact: true }).first().waitFor();
 		check(await page.locator(".chart-empty").isVisible(), "空表缺少空曲线提示");
+		await nav.getByRole("link", { name: "故障与报警", exact: true }).click();
+		await page.getByText("当前采样窗口暂无代码记录", { exact: true }).waitFor();
+		check(await page.locator(".code-table tbody tr").count() === 0, "空表仍有旧代码记录");
+		await nav.getByRole("link", { name: "采样明细", exact: true }).click();
+		check(await page.locator("table tbody tr").count() === 0, "空表仍有旧采样记录");
+		await nav.getByRole("link", { name: "实时数据", exact: true }).click();
 		mode = "truncated";
 		await page.getByRole("button", { name: "刷新数据", exact: true }).click();
 		await page.getByText(/响应大小达到上限/).waitFor();
