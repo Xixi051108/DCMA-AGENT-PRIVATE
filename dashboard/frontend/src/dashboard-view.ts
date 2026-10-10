@@ -5,9 +5,13 @@ export function displayValue(value: unknown): string {
 	return typeof value === "number" ? value.toLocaleString("zh-CN", { maximumFractionDigits: 4 }) : String(value);
 }
 
-export function displayTime(value: string | null | undefined, timeOnly = false): string {
+export function displayRaw(value: unknown): string {
+	return value === null || value === undefined || value === "" ? "—" : String(value);
+}
+
+export function displayTime(value: string | null | undefined, timeOnly = false, precise = false): string {
 	if (!value) return "—";
-	return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", ...(timeOnly ? {} : { year: "numeric", month: "2-digit", day: "2-digit" }), hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date(value));
+	return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", ...(timeOnly ? {} : { year: "numeric", month: "2-digit", day: "2-digit" }), hour: "2-digit", minute: "2-digit", second: "2-digit", ...(precise ? { fractionalSecondDigits: 3 } : {}), hour12: false }).format(new Date(value));
 }
 
 export function sampleIdentity(record: DashboardRecord | null): string {

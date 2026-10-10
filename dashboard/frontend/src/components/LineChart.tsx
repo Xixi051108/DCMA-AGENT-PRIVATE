@@ -51,7 +51,7 @@ export function LineChart({ samples, fields }: { samples: DashboardSample[]; fie
 				{[0, Math.floor((samples.length - 1) / 2), samples.length - 1].filter((tick, i, list) => list.indexOf(tick) === i).map((tick) => <text key={tick} x={x(samples[tick])} y="248" textAnchor={tick === 0 ? "start" : tick === samples.length - 1 ? "end" : "middle"}>{displayTime(samples[tick].acquiredAt, true)}</text>)}
 				{current && <line x1={x(current)} x2={x(current)} y1={top} y2={bottom} stroke="#94a3b8" strokeDasharray="3 4" />}
 			</svg>
-			{current && <div className="chart-tooltip" role="status" style={{ left: `${Math.min(65, Math.max(0, x(current) / 10))}%` }}><strong>{displayTime(current.acquiredAt)}</strong><span>记录 {current.id}</span>{fields.map((field) => <p key={field}>{fieldLabels[field]}<b>{displayValue(current.values[field])}</b></p>)}</div>}
+			{current && <div className="chart-tooltip" role="status" style={{ left: `${Math.min(65, Math.max(0, x(current) / 10))}%` }}><strong>{displayTime(current.acquiredAt, false, true)}</strong><span>记录 {current.id}</span>{fields.map((field) => <p key={field}>{fieldLabels[field]}<b>{displayValue(current.values[field])}</b></p>)}</div>}
 		</div>
 		<p className="muted small">北京时间 · 悬停或聚焦曲线后用 ← → 查看采样 · 缺失值处断开</p>
 	</div>;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fieldLabels, numericFields, type DashboardField, type DashboardTable, type NumericField } from "./database-types.ts";
-import { displayTime, displayValue } from "./dashboard-view.ts";
+import { displayTime, displayValue, displayRaw } from "./dashboard-view.ts";
 import { useDashboard } from "./useDashboard.ts";
 import { Gauge } from "./components/Gauge.tsx";
 import { LineChart } from "./components/LineChart.tsx";
@@ -51,13 +51,16 @@ export function App() {
 						<label>查看指标 <select aria-label="查看指标" value={metric} onChange={(event) => setMetric(event.target.value as typeof metric)}><optgroup label="对比曲线"><option value="speed">转速对比</option><option value="torque">转矩对比</option></optgroup><optgroup label="单项指标">{numericFields.map((field) => <option key={field} value={field}>{fieldLabels[field]}</option>)}</optgroup></select></label>
 						<label>采样条数 <select aria-label="采样条数" value={limit} onChange={(event) => setLimit(Number(event.target.value) as 50 | 100 | 200)}>{[50, 100, 200].map((value) => <option key={value} value={value}>{value} 条</option>)}</select></label>
 					</div></div>
-					<LineChart key={`${table}/${limit}/${metric}`} samples={data?.samples ?? []} fields={chartFields} />
+					{loading && !data ? <p className="chart-empty">正在读取当前设备采样…</p> : <LineChart key={`${table}/${limit}/${metric}`} samples={data?.samples ?? []} fields={chartFields} />}
 					<p className="muted small window-count">已返回 {data?.returned ?? 0} 条记录，{data?.samples.length ?? 0} 条有效时间采样{data?.hasMore ? " · 仅展示最近窗口" : ""}{data?.truncated ? " · 响应已截断" : ""}</p>
 				</section>
 				<section aria-label="六项采样仪表" className="gauge-grid">{gaugeFields.map((field) => <Gauge key={field} label={fieldLabels[field]} value={latest?.values[field] ?? null} samples={data?.samples.map((sample) => sample.values[field]) ?? []} />)}</section>
-				<section aria-label="运行信息" className="running-grid">{runningFields.map((field) => <div className="panel-card running-card" key={field}><span>{fieldLabels[field]}</span><strong>{displayValue(latest?.raw[field])}</strong><small>{numericFields.includes(field as typeof numericFields[number]) ? "单位待确认" : "原始值 · 含义待确认"}</small></div>)}</section>
-				<section className="panel-card"><h2>完整参数</h2><p className="muted small">31 个原始字段 · 单位、代码映射及额定值待确认，保留原值</p><dl className="parameter-grid">{fields.map((field) => <div key={field}><dt>{fieldLabels[field]}<small>{field}</small></dt><dd>{displayValue(latest?.raw[field])}</dd></div>)}</dl></section>
-				<section className="panel-card"><details><summary>采样明细 · {data?.returned ?? 0} 条原始记录</summary><div className="table-scroll"><table><thead><tr>{fields.map((field) => <th key={field}>{fieldLabels[field]}<small>{field}</small></th>)}</tr></thead><tbody>{data?.records.map((record) => <tr key={record.id}>{fields.map((field) => <td key={field}>{displayValue(record.raw[field])}</td>)}</tr>)}</tbody></table></div></details></section>
+				<section aria-label="运行信息" className="running-grid">{runningFields.map((field) => {
+					const numeric = numericFields.includes(field as NumericField);
+					return <div className="panel-card running-card" key={field}><span>{fieldLabels[field]}</span><strong>{numeric ? displayValue(latest?.values[field as NumericField]) : displayRaw(latest?.raw[field])}</strong><small>{numeric ? "单位待确认" : "原始值 · 含义待确认"}</small></div>;
+				})}</section>
+				<section className="panel-card"><h2>完整参数</h2><p className="muted small">31 个原始字段 · 单位、代码映射及额定值待确认，保留原值</p><dl className="parameter-grid">{fields.map((field) => <div key={field}><dt>{fieldLabels[field]}<small>{field}</small></dt><dd>{displayRaw(latest?.raw[field])}</dd></div>)}</dl></section>
+				<section className="panel-card"><details><summary>采样明细 · {data?.returned ?? 0} 条原始记录</summary><div className="table-scroll"><table><thead><tr>{fields.map((field) => <th key={field}>{fieldLabels[field]}<small>{field}</small></th>)}</tr></thead><tbody>{data?.records.map((record) => <tr key={record.id}>{fields.map((field) => <td key={field}>{displayRaw(record.raw[field])}</td>)}</tr>)}</tbody></table></div></details></section>
 				<footer className="page-footer">采样值未作单位换算 · 状态、故障与报警保留原始代码 · 仪表范围不代表安全阈值</footer>
 			</main>
 		</div>

@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { displayTime, displayValue, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
+import { displayTime, displayValue, displayRaw, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
 	assert.equal(displayValue(0), "0");
 	assert.equal(displayValue(-200), "-200");
 	assert.equal(displayValue("0000:00:00"), "0000:00:00");
+	assert.equal(displayRaw(0.123456789), "0.123456789");
+	assert.equal(displayRaw(0), "0");
+	assert.match(displayTime("2026-01-14T10:27:24.814Z", false, true), /18:27:24.814/);
 	for (const value of [null, undefined, ""]) assert.equal(displayValue(value), "—");
 	assert.match(displayTime("2026-01-14T10:27:24.814Z"), /18:27:24/);
 	const example = dashboardExample();
