@@ -3,7 +3,7 @@ import type { Connection as CoreConnection } from "mysql2";
 import { createCodeHistory, type CodeHistoryOptions } from "./code-events.ts";
 import type { DatabaseCatalog, DatabaseRows, DatabaseTable } from "./types.ts";
 import { collectionTimeSql, makeDashboardData, normalizeRecord } from "./dashboard-data.ts";
-import { dashboardTables, type DashboardData, type DashboardSource, type DashboardTable } from "./dashboard-types.ts";
+import { dashboardTables, type DashboardData, type DashboardHistory, type DashboardRange, type DashboardSource, type DashboardTable } from "./dashboard-types.ts";
 
 const sources = ["real_data", "real_data_01", "real_data_02", "real_data_03", "real_data_04"];
 let pool: Pool | undefined;
@@ -68,6 +68,10 @@ export function databaseError(error: unknown): string {
 	if (error instanceof Error && error.message === "DASHBOARD_RESULT_TOO_LARGE") return "单条记录超过展板结果大小限制，请通过原始记录预览核对数据。";
 	if (error instanceof Error && error.message === "CODE_HISTORY_UNAVAILABLE") return "当前来源不存在或缺少故障历史所需字段。";
 	if (error instanceof Error && error.message === "CODE_HISTORY_MIXED_DEVICES") return "当前来源包含多个设备或变频器，已停止混合展示故障历史。";
+	if (error instanceof Error && error.message === "SAMPLE_HISTORY_UNAVAILABLE") return "当前来源不存在或缺少采样查询所需字段。";
+	if (error instanceof Error && error.message === "SAMPLE_HISTORY_MIXED_DEVICES") return "当前来源包含多个设备或变频器，已停止混合展示采样记录。";
+	if (error instanceof Error && error.message === "SAMPLE_HISTORY_TOO_MANY") return "所选时段超过1000页，请缩小时间范围或增加每页条数。";
+	if (error instanceof Error && error.message === "SAMPLE_HISTORY_TOO_LARGE") return "当前页数据超过大小限制，请减少每页条数或缩小时间范围。";
 	return "MySQL 未连接或查询失败；请确认校园网/VPN、3306 端口及数据库权限。没有返回可用于分析的数据。";
 }
 
@@ -287,5 +291,33 @@ export async function readCodeHistory(options: CodeHistoryOptions, signal?: Abor
 			for await (const row of stream) { signal?.throwIfAborted(); history.add(row as Record<string, unknown>); }
 		} finally { signal?.removeEventListener("abort", abortStream); }
 		return history.finish();
+	}, signal);
+}
+
+export async function readSampleHistory(options: DashboardRange & { table: DashboardTable; limit: 50 | 100 | 200; page: number }, signal?: AbortSignal): Promise<DashboardHistory> {
+	const { table, limit, page, from, to } = options;
+	if (!dashboardTables.includes(table) || ![50, 100, 200].includes(limit) || !Number.isInteger(page) || page < 1 || page > 1000 ||
+		!Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to)) || new Date(from).toISOString() !== from || new Date(to).toISOString() !== to || from > to) throw new Error("无效的时段查询参数");
+	const metadata = (await listDatabaseTables()).find((item) => item.schema === "dcma" && item.name === table);
+	if (!metadata || ["id", "timestamp", "device_name", "inverter_name"].some((field) => !metadata.columns.some((column) => column.name === field))) throw new Error("SAMPLE_HISTORY_UNAVAILABLE");
+	return readOnly(async (connection) => {
+		const qualified = `${escapeId("dcma")}.${escapeId(table)}`;
+		const [identities] = await connection.query<RowDataPacket[]>({ sql: `SELECT DISTINCT device_name, inverter_name FROM ${qualified}
+			WHERE device_name IS NOT NULL AND TRIM(device_name) <> '' AND inverter_name IS NOT NULL AND TRIM(inverter_name) <> '' LIMIT 2`, timeout: 5000 });
+		if (identities.length > 1) throw new Error("SAMPLE_HISTORY_MIXED_DEVICES");
+		const sources: DashboardSource[] = [{ table, deviceIndex: table === "real_data" ? 1 : Number(table.slice(-2)), kind: table === "real_data" ? "acquired" : "simulation", available: true, latest: null, message: "" }];
+		let rows: RowDataPacket[] = [], total = 0;
+		if (identities.length) {
+			const parameters = [identities[0].device_name, identities[0].inverter_name, Date.parse(from), Date.parse(to)];
+			const selected = `(SELECT *, ${collectionTimeSql} AS __collection_ms FROM ${qualified} WHERE device_name <=> ? AND inverter_name <=> ?) AS history_rows WHERE __collection_ms BETWEEN ? AND ?`;
+			const [counts] = await connection.execute<RowDataPacket[]>({ sql: `SELECT COUNT(*) AS total FROM ${selected}`, timeout: 55000 }, parameters);
+			total = Number(counts[0].total);
+			if (!Number.isSafeInteger(total) || total > limit * 1000) throw new Error("SAMPLE_HISTORY_TOO_MANY");
+			[rows] = await connection.execute<RowDataPacket[]>({ sql: `SELECT * FROM ${selected} ORDER BY __collection_ms DESC, id DESC LIMIT ? OFFSET ?`, timeout: 55000 }, [...parameters, limit, (page - 1) * limit]);
+		}
+		const data: DashboardHistory = { ...makeDashboardData(table, limit, sources, rows, page * limit < total), from, to, page, total };
+		// Never skip records between pages when a response reaches the size limit.
+		if (data.truncated || Buffer.byteLength(JSON.stringify(data)) > 512000) throw new Error("SAMPLE_HISTORY_TOO_LARGE");
+		return data;
 	}, signal);
 }

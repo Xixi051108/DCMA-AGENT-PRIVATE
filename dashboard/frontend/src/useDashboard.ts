@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { DashboardData, DashboardTable } from "./database-types.ts";
 import { sampleIdentity } from "./dashboard-view.ts";
 
-export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200) {
+export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200, enabled = true) {
 	const [state, setState] = useState<{ key: string; data: DashboardData | null; loading: boolean; error: string; update: string }>({ key: "", data: null, loading: true, error: "", update: "等待首次查询" });
 	const refresh = useRef<() => void>(() => {});
 	const key = `${table}/${limit}`;
 	useEffect(() => {
+		if (!enabled) { refresh.current = () => {}; return; }
 		let active = true;
 		let busy = false;
 		let previous: DashboardData | null = null;
@@ -39,6 +40,6 @@ export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200) {
 		void request();
 		const timer = setInterval(() => void request(), 3000);
 		return () => { active = false; clearInterval(timer); controller?.abort(); };
-	}, [key, table, limit]);
+	}, [key, table, limit, enabled]);
 	return { ...(state.key === key ? state : { data: null, loading: true, error: "", update: "等待首次查询" }), refresh: () => refresh.current() };
 }

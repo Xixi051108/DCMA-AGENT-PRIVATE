@@ -56,6 +56,15 @@ export interface DashboardData {
 	warnings: string[];
 }
 
+export interface DashboardRange {
+	from: string;
+	to: string;
+}
+export interface DashboardHistory extends DashboardData, DashboardRange {
+	page: number;
+	total: number;
+}
+
 export type CodeField = "fault_code" | "alarm_code";
 export interface CodeEvent {
 	id: string;

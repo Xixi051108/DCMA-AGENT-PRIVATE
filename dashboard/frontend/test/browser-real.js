@@ -7,7 +7,7 @@ async (page) => {
 		await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();
 		const nav = page.getByRole("navigation", { name: "监控页面" });
 		const pages = ["设备概览", "实时数据", "运行指标", "故障与报警", "采样明细", "数据说明"];
-		check(await nav.getByRole("link").count() === 6, "侧边栏菜单不是六项");
+		check(await nav.getByRole("link").count() === 7, "侧边栏菜单不是七项");
 		for (const width of [1366, 1920]) {
 			await page.setViewportSize({ width, height: width === 1366 ? 900 : 1080 });
 			check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}页面横向溢出`);

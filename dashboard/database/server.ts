@@ -1,5 +1,5 @@
 import { createServer, type ServerResponse } from "node:http";
-import { databaseError, getDatabaseCatalog, readDatabaseRows, readDashboard, readCodeHistory } from "./database.ts";
+import { databaseError, getDatabaseCatalog, readDatabaseRows, readDashboard, readCodeHistory, readSampleHistory } from "./database.ts";
 import { dashboardTables, type DashboardTable } from "./dashboard-types.ts";
 
 function json(response: ServerResponse, status: number, value: unknown): void {
@@ -26,7 +26,7 @@ export function createDatabaseServer() {
 			return;
 		}
 		const path = new URL(request.url ?? "/", `http://${host}`);
-		if (!["/api/database/catalog", "/api/database/rows", "/api/database/dashboard", "/api/database/code-history"].includes(path.pathname)) {
+		if (!["/api/database/catalog", "/api/database/rows", "/api/database/dashboard", "/api/database/code-history", "/api/database/sample-history"].includes(path.pathname)) {
 			json(response, 404, { error: "接口不存在" });
 			return;
 		}
@@ -35,6 +35,21 @@ export function createDatabaseServer() {
 			return;
 		}
 		void (async () => {
+			if (path.pathname === "/api/database/sample-history") {
+				const table = path.searchParams.get("table") ?? "real_data_01";
+				const limit = Number(path.searchParams.get("limit") ?? 100), page = Number(path.searchParams.get("page") ?? 1);
+				const from = path.searchParams.get("from") ?? "", to = path.searchParams.get("to") ?? "";
+				const validDate = (value: string) => Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+				if (!dashboardTables.includes(table as DashboardTable) || ![50, 100, 200].includes(limit) || !Number.isInteger(page) || page < 1 || page > 1000 ||
+					!validDate(from) || !validDate(to) || from > to || [...path.searchParams.keys()].some((key) => !["table", "limit", "page", "from", "to"].includes(key))) {
+					json(response, 400, { error: "请提供有效数据来源、起止时间及页码，每页条数为50、100或200，开始时间不能晚于结束时间。" }); return;
+				}
+				const controller = new AbortController();
+				response.once("close", () => { if (!response.writableEnded) controller.abort(); });
+				const data = await readSampleHistory({ table: table as DashboardTable, limit: limit as 50 | 100 | 200, page, from, to }, AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]));
+				if (!response.destroyed) json(response, 200, data);
+				return;
+			}
 			if (path.pathname === "/api/database/code-history") {
 				const table = path.searchParams.get("table") ?? "real_data_01";
 				const page = Number(path.searchParams.get("page") ?? 1);
