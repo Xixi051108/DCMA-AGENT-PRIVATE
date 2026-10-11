@@ -37,7 +37,7 @@ export function useDashboard(table: DashboardTable, limit: 50 | 100 | 200) {
 		};
 		refresh.current = () => void request();
 		void request();
-		const timer = setInterval(() => void request(), 5000);
+		const timer = setInterval(() => void request(), 3000);
 		return () => { active = false; clearInterval(timer); controller?.abort(); };
 	}, [key, table, limit]);
 	return { ...(state.key === key ? state : { data: null, loading: true, error: "", update: "等待首次查询" }), refresh: () => refresh.current() };
