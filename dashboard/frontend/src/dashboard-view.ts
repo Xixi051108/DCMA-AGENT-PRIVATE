@@ -5,7 +5,7 @@ export const fieldUnits: Partial<Record<DashboardField, string>> = {
 	torque_setpoint: "N·m", torque_actual: "N·m", air_intake_temp: "°C", motor_temp: "°C",
 	inverter_temp: "°C", actual_power: "kW", field_current: "A", torque_current: "A",
 	inverter_radiator_temp: "°C", inverter_load_rate: "%", motor_load_rate: "%",
-	motor_power: "kW", feedback_power: "kW",
+	motor_power: "kW", feedback_power: "kW", pulse_frequency: "kHz",
 };
 
 export function displayFieldLabel(field: DashboardField): string {

@@ -25,7 +25,9 @@ test("参考单位只作标注，故障报警零值仅显示0，其他代码和�
 	assert.equal(displayFieldLabel("speed_actual"), "实际转速（rpm）");
 	assert.equal(displayFieldLabel("torque_actual"), "实际转矩（N·m）");
 	assert.equal(displayFieldLabel("inverter_load_rate"), "变频器负荷率（%）");
-	assert.equal(fieldUnits.pulse_frequency, undefined);
+	assert.equal(fieldUnits.pulse_frequency, "kHz");
+	assert.equal(displayFieldLabel("pulse_frequency"), "脉冲频率（kHz）");
+	assert.equal(displayRawField("pulse_frequency", 2), "2");
 	assert.equal(fieldUnits.system_run_time, undefined);
 	for (const field of ["fault_code", "alarm_code"] as const) {
 		assert.equal(displayRawField(field, 0), "0");
