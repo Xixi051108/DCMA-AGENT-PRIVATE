@@ -39,10 +39,39 @@ async (page) => {
 		check(await page.getByRole("navigation").getByRole("link", { name: "数据查询", exact: true }).getAttribute("aria-current") === "page", "查询菜单未选中");
 		check(await page.getByRole("button", { name: "刷新查询", exact: true }).isDisabled(), "未选择时间仍可刷新");
 		check(requests.length === 0, "进入查询页自动查全部历史");
-		const from = page.getByLabel("开始时间（北京时间）", { exact: true }), to = page.getByLabel("结束时间（北京时间）", { exact: true });
+		check(await page.getByRole("button", { name: "开始时间（北京时间）设为现在", exact: true }).count() === 0, "开始时间仍显示现在按钮");
+		for (const label of ["结束时间（北京时间）"]) {
+			const before = Date.now();
+			await page.getByRole("button", { name: `${label}设为现在`, exact: true }).click();
+			const date = await page.getByLabel(`${label}日期`, { exact: true }).inputValue();
+			const time = await page.getByLabel(`${label}时间（24小时制）`, { exact: true }).inputValue();
+			const chosen = Date.parse(`${date}T${time}+08:00`);
+			check(chosen >= before - 1000 && chosen <= Date.now(), `${label}现在未填入当前北京时间`);
+		}
+		check(requests.length === 0, "现在按钮提前提交了查询");
+		const timeInput = (label) => ({ inputValue: async () => {
+			const date = await page.getByLabel(`${label}日期`, { exact: true }).inputValue();
+			return date ? `${date}T${await page.getByLabel(`${label}时间（24小时制）`, { exact: true }).inputValue()}` : "";
+		}, fill: async (value) => {
+			const [date, time] = value.split("T");
+			await page.getByLabel(`${label}日期`, { exact: true }).fill(date);
+			await page.getByLabel(`${label}时间（24小时制）`, { exact: true }).fill(time);
+		} });
+		const from = timeInput("开始时间（北京时间）"), to = timeInput("结束时间（北京时间）");
 		const query = () => page.getByRole("button", { name: "查询数据", exact: true }).click();
 		const ready = () => page.waitForFunction(() => !document.querySelector(".header-actions button").disabled);
 		await from.fill("2026-10-10T12:00"); await to.fill("2026-10-10T12:02");
+		const clock = page.getByLabel("开始时间（北京时间）时间（24小时制）", { exact: true });
+		check(await clock.getAttribute("type") === "text", "时间输入仍依赖系统12小时制");
+		for (const time of ["00:00:00", "18:30:00", "23:59:59"]) {
+			await clock.fill(time);
+			check(await clock.evaluate((input) => input.checkValidity()), `${time}有效24小时时间被拒绝`);
+		}
+		for (const time of ["24:00:00", "18:60:00", "06:30 PM"]) {
+			await clock.fill(time);
+			check(!await clock.evaluate((input) => input.checkValidity()), `${time}无效时间被接受`);
+		}
+		await clock.fill("12:00");
 		await page.getByRole("combobox", { name: "每页条数", exact: true }).selectOption("50");
 		check(requests.length === 0, "编辑时间或条数时提前请求");
 		await query(); await ready();

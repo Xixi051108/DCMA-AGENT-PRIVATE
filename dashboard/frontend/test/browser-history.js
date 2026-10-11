@@ -59,7 +59,12 @@ async (page) => {
 			if (width === 375 || width === 1366) await page.screenshot({ path: `output/playwright/history-${width}.png`, fullPage: true });
 		}
 		await page.setViewportSize({ width: 1366, height: 900 });
-		const fromInput = page.getByLabel("开始时间（北京时间）", { exact: true }), toInput = page.getByLabel("结束时间（北京时间）", { exact: true });
+		const timeInput = (label) => ({ fill: async (value) => {
+			const [date, time] = value.split("T");
+			await page.getByLabel(`${label}日期`, { exact: true }).fill(date);
+			await page.getByLabel(`${label}时间（24小时制）`, { exact: true }).fill(time);
+		} });
+		const fromInput = timeInput("开始时间（北京时间）"), toInput = timeInput("结束时间（北京时间）");
 		await fromInput.fill("2026-10-09T12:00"); await toInput.fill("2026-10-09T13:00");
 		await page.getByRole("button", { name: "查询异常", exact: true }).click();
 		await page.getByRole("button", { name: "查询异常", exact: true }).waitFor();

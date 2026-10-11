@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fieldLabels, type CodeHistory, type DashboardTable } from "../database-types.ts";
 import { displaySamplingSpan } from "../code-analysis.ts";
 import { codeClassName, displayTime } from "../dashboard-view.ts";
+import { DateTimeInput } from "./DateTimeInput.tsx";
 
 export function CodeEventHistory({ table }: { table: DashboardTable }) {
 	const [from, setFrom] = useState(""), [to, setTo] = useState("");
@@ -50,8 +51,8 @@ export function CodeEventHistory({ table }: { table: DashboardTable }) {
 				if (begin && end && begin > end) { setValidation("开始时间不能晚于结束时间。"); return; }
 				setValidation(""); setRange({ from: begin, to: end }); setPage(1); setReload((value) => value + 1);
 			}}>
-				<label>开始时间（北京时间）<input type="datetime-local" step="1" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
-				<label>结束时间（北京时间）<input type="datetime-local" step="1" value={to} onChange={(event) => setTo(event.target.value)} /></label>
+				<DateTimeInput label="开始时间（北京时间）" value={from} onChange={setFrom} />
+				<DateTimeInput label="结束时间（北京时间）" showNow value={to} onChange={setTo} />
 				<button className="refresh-button" disabled={loading}>{loading ? "查询异常中…" : "查询异常"}</button>
 				<button type="button" className="code-reset" onClick={() => { setFrom(""); setTo(""); setRange({ from: "", to: "" }); setValidation(""); setPage(1); setReload((value) => value + 1); }}>全部时间</button>
 			</form>

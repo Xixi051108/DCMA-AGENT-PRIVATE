@@ -6,6 +6,7 @@ import { useSampleHistory } from "./useSampleHistory.ts";
 import { Gauge } from "./components/Gauge.tsx";
 import { LineChart } from "./components/LineChart.tsx";
 import { CodeAnalysis } from "./components/CodeAnalysis.tsx";
+import { DateTimeInput } from "./components/DateTimeInput.tsx";
 
 const motorTables: DashboardTable[] = ["real_data_01", "real_data_02", "real_data_03", "real_data_04"];
 const runningFields: DashboardField[] = ["inverter_load_rate", "motor_load_rate", "fault_code", "alarm_code"];
@@ -109,8 +110,8 @@ export function App() {
 							setValidation(""); setRange({ from: begin, to: end }); setSamplePage(1);
 						} catch { setValidation("请填写有效的开始和结束时间。"); }
 					}}>
-						<label>开始时间（北京时间）<input type="datetime-local" step="1" required value={from} onChange={(event) => setFrom(event.target.value)} /></label>
-						<label>结束时间（北京时间）<input type="datetime-local" step="1" required value={to} onChange={(event) => setTo(event.target.value)} /></label>
+						<DateTimeInput label="开始时间（北京时间）" required value={from} onChange={setFrom} />
+						<DateTimeInput label="结束时间（北京时间）" required showNow value={to} onChange={setTo} />
 						<button className="refresh-button" disabled={loading}>{loading ? "查询采样中…" : "查询数据"}</button>
 						<button type="button" className="code-reset" onClick={() => { resetRange(); window.location.hash = "realtime"; }}>返回实时</button>
 					</form>

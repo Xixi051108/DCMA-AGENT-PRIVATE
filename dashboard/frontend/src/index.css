@@ -151,6 +151,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .code-filters select, .code-filters input, .code-reset { min-height: 44px; }
 .code-filters input { min-width: 0; width: 240px; max-width: 100%; padding: 9px 12px; background: white; color: var(--ink); border: 1px solid var(--border); border-radius: 10px; font: inherit; transition: border-color .16s, box-shadow .16s; }
 .code-filters input:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.date-time-field { border: 0; padding: 0; margin: 0; min-width: 0; width: 280px; max-width: 100%; }
+.date-time-field legend { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 0; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+.date-time-now { flex-shrink: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--teal); }
+.date-time-now:hover { background: var(--teal-soft); }
+.date-time-field > div { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; }
+.date-time-field input { width: 100%; }
+@media (max-width: 700px) { .date-time-field { width: 100%; } }
 .code-reset { padding: 10px 16px; background: white; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--teal); transition: background .16s, border-color .16s; }
 .code-reset:hover:not(:disabled) { background: var(--teal-soft); border-color: #a9c9d0; }
 .code-reset:disabled { color: var(--muted); opacity: .65; }
