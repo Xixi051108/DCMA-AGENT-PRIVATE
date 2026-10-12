@@ -9,7 +9,7 @@ export function createCodeHistory(options: CodeHistoryOptions) {
 	const result: CodeHistory = { table: options.table, queriedAt: "", page: options.page, pageSize: 50, total: 0, faults: 0, alarms: 0, open: 0, invalidTimes: 0, events: [], codes: [] };
 	const active: Partial<Record<CodeField, CodeEvent>> = {};
 	const previous: Partial<Record<CodeField, string | null>> = {};
-	const codes = new Map<string, { field: CodeField; code: string; count: number }>();
+	const codes = new Map<string, CodeHistory["codes"][number]>();
 	const retain = options.page * result.pageSize;
 	const collect = (event: CodeEvent) => {
 		// 取事件与查询区间的交集，保留完整事件时间。
@@ -18,8 +18,9 @@ export function createCodeHistory(options: CodeHistoryOptions) {
 		if (event.field === "fault_code") result.faults++; else result.alarms++;
 		if (!event.endedAt) result.open++;
 		const key = JSON.stringify([event.field, event.code]);
-		const entry = codes.get(key) ?? { field: event.field, code: event.code, count: 0 };
+		const entry = codes.get(key) ?? { field: event.field, code: event.code, count: 0, durationMs: 0 };
 		entry.count++;
+		entry.durationMs += Math.max(0, Date.parse(event.endedAt ?? event.lastSeenAt) - Date.parse(event.startedAt));
 		codes.set(key, entry);
 		result.events.push(event);
 		result.events.sort((a, b) => b.startedAt.localeCompare(a.startedAt) || b.id.localeCompare(a.id, undefined, { numeric: true }));

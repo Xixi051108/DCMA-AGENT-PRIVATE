@@ -43,6 +43,29 @@ test("历史事件覆盖超过200条采样并稳定分页，不受最近窗口�
 	assert.equal(second.events.at(-1)?.startedAt, iso(0));
 	assert.ok(second.events.every((event) => !first.events.some((other) => event.id === other.id)));
 	assert.deepEqual(read(1).events, first.events);
+	assert.equal(first.codes[0].durationMs, 60000);
+	assert.deepEqual(first.codes, second.codes);
 	const empty = createCodeHistory({ table: "real_data", page: 1 }).finish();
 	assert.deepEqual([empty.total, empty.faults, empty.alarms, empty.open, empty.events.length], [0, 0, 0, 0, 0]);
+});
+
+test("代码时长累计完整匹配事件，区分故障报警且未结束只统计最后观察时刻", () => {
+	const records = [row(0, "X", "X"), row(1, "X", null), row(2, 0, "X"), row(3, "X", 0), row(4, null, 0), { ...row(4, 0), timestamp: "invalid" }, row(5, "X", 0)];
+	const read = (from?: string, to?: string) => {
+		const history = createCodeHistory({ table: "real_data_01", page: 1, from, to });
+		records.forEach(history.add);
+		return history.finish();
+	};
+	const result = read();
+	assert.equal(result.codes.find((code) => code.field === "fault_code")!.durationMs, 4000);
+	assert.equal(result.codes.find((code) => code.field === "fault_code")!.count, 2);
+	assert.equal(result.codes.find((code) => code.field === "alarm_code")!.durationMs, 3000);
+	assert.equal(result.open, 1);
+	assert.equal(result.invalidTimes, 1);
+	const filtered = read(iso(1), iso(1));
+	assert.equal(filtered.codes.find((code) => code.field === "fault_code")!.durationMs, 2000);
+	assert.equal(filtered.codes.find((code) => code.field === "alarm_code")!.durationMs, 3000);
+	const single = createCodeHistory({ table: "real_data_01", page: 1 });
+	single.add(row(0, "F1"));
+	assert.equal(single.finish().codes[0].durationMs, 0);
 });

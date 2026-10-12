@@ -89,5 +89,5 @@ export interface CodeHistory {
 	open: number;
 	invalidTimes: number;
 	events: CodeEvent[];
-	codes: { field: CodeField; code: string; count: number }[];
+	codes: { field: CodeField; code: string; count: number; durationMs: number }[];
 }

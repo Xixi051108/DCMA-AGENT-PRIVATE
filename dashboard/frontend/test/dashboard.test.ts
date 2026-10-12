@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { displayTime, displayValue, displayRaw, displayRawField, codeClassName, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
-import { displaySamplingSpan } from "../src/code-analysis.ts";
+import { displaySamplingSpan, recentCodeHistory } from "../src/code-analysis.ts";
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
 	assert.equal(displayValue(0), "0");
@@ -70,4 +70,22 @@ test("异常持续时间保留毫秒并按天、小时、分秒显示", () => {
 	assert.equal(displaySamplingSpan(61250), "1 分 1.25 秒");
 	assert.equal(displaySamplingSpan(3660000), "1 小时 1 分");
 	assert.equal(displaySamplingSpan(90061001), "1 天 1 小时 1 分 1.001 秒");
+});
+
+test("近期事件按采集时间排序并复用连续代码规则，不修改原始采样", () => {
+	const original = dashboardExample().records[0];
+	const records = [[0, 0], ["F1", 0], ["F1", "A1"], ["F1", "A1"], [0, 0]].map(([fault, alarm], index) => ({
+		...original, id: String(index), acquiredAt: new Date(1791594000000 + index * 1000).toISOString(),
+		raw: { ...original.raw, fault_code: fault, alarm_code: alarm },
+	})).reverse();
+	const before = structuredClone(records);
+	const history = recentCodeHistory("real_data_01", records);
+	assert.equal(history.total, 2);
+	assert.equal(history.events.find((event) => event.code === "F1")!.samples, 3);
+	assert.equal(history.events.find((event) => event.code === "F1")!.startedAt, records[3].acquiredAt);
+	assert.equal(history.events.find((event) => event.code === "F1")!.endedAt, records[0].acquiredAt);
+	assert.equal(history.events.find((event) => event.code === "A1")!.samples, 2);
+	assert.deepEqual(records, before);
+	assert.equal(recentCodeHistory("real_data_01", [{ ...records[0], acquiredAt: null }]).invalidTimes, 1);
+	assert.equal(recentCodeHistory("real_data_01", []).total, 0);
 });

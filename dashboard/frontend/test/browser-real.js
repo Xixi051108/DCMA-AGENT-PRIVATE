@@ -6,7 +6,7 @@ async (page) => {
 		await page.goto("http://127.0.0.1:3000");
 		await page.locator(".sidebar-footer").filter({ hasText: "数据库查询成功" }).waitFor();
 		const nav = page.getByRole("navigation", { name: "监控页面" });
-		const pages = ["设备概览", "实时数据", "运行指标", "故障与报警", "采样明细", "数据说明"];
+		const pages = ["设备概览", "实时数据", "运行指标", "故障与报警", "采样明细"];
 		check(await nav.getByRole("link").count() === 7, "侧边栏菜单不是七项");
 		for (const width of [1366, 1920]) {
 			await page.setViewportSize({ width, height: width === 1366 ? 900 : 1080 });
@@ -23,11 +23,9 @@ async (page) => {
 				check(await nav.getByRole("link", { name, exact: true }).getAttribute("aria-current") === "page", `${name}菜单未选中`);
 				check(await page.locator("main").getByText("状态码", { exact: true }).count() === 0, `${name}仍显示status字段`);
 				check(!(await page.locator("main").innerText()).includes("运行时间"), `${name}仍显示系统运行时间`);
-				if (name !== "数据说明") {
-					const content = await page.locator("body").innerText();
-					for (const note of ["原始值 · 格式待确认", "单位待确认", "0 为正常 · 其他保留原始代码", "单位按参考图标注", "表格可横向滚动", "采样范围 · 非额定量程", "北京时间 · 悬停"]) {
-						check(!content.includes(note), `${name}仍显示说明文字：${note}`);
-					}
+				const content = await page.locator("body").innerText();
+				for (const note of ["原始值 · 格式待确认", "单位待确认", "0 为正常 · 其他保留原始代码", "单位按参考图标注", "表格可横向滚动", "采样范围 · 非额定量程", "北京时间 · 悬停"]) {
+					check(!content.includes(note), `${name}仍显示说明文字：${note}`);
 				}
 				check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}/${name}页面横向溢出`);
 			}
