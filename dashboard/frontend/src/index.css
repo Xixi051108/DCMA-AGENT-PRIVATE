@@ -115,16 +115,14 @@ tbody tr:last-child td { border-bottom: 0; }
 .equipment-illustration { display: block; width: 300px; max-width: 52%; height: auto; flex-shrink: 0; }
 .overview-intro .muted { font-size: 13px; margin-top: 8px; }
 .text-link { font-size: 13px; color: var(--blue); font-weight: 600; white-space: nowrap; }
-.text-link:hover, .metric-card a:hover { text-decoration: underline; }
+.text-link:hover { text-decoration: underline; }
 .group-count { background: #f1f5f9; color: var(--muted); padding: 5px 9px; font-size: 12px; border-radius: 5px; white-space: nowrap; }
 .metric-groups { display: flex; flex-direction: column; gap: 20px; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.metric-card { background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; padding: 20px; min-width: 0; }
+.metric-card { display: block; color: var(--ink); background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; padding: 20px; min-width: 0; transition: background .16s, border-color .16s; }
+.metric-card:hover { background: var(--blue-soft); border-color: #bfdbfe; }
 .metric-card > span { font-size: 13px; color: var(--muted); }
-.metric-card > strong { font-size: 32px; font-weight: 600; display: block; margin: 12px 0 16px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.metric-card > div { padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-.metric-card small { color: var(--muted); font-size: 11px; }
-.metric-card a { color: var(--blue); font-size: 13px; font-weight: 500; padding: 4px 0; }
+.metric-card > strong { font-size: 32px; font-weight: 600; display: block; margin: 12px 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .code-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .code-table table, .code-event-table table { width: 100%; }
 .code-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
