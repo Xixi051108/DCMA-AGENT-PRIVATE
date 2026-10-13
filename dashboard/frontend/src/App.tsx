@@ -130,7 +130,7 @@ export function App() {
 						<div className="section-heading"><h2>完整参数</h2><a className="text-link" href="#records">查看采样明细 →</a></div>
 						<div className="parameter-groups">{parameterGroups.map((group) => <section className="parameter-group" key={group.title} aria-label={group.title}>
 							<h3>{group.title}</h3>
-							<dl className="parameter-grid">{group.fields.map((field) => <div key={field}><dt>{displayFieldLabel(field)}</dt><dd className={codeClassName(field, latest?.raw[field])}>{displayRawField(field, latest?.raw[field])}</dd></div>)}</dl>
+							<dl className="parameter-grid">{group.fields.map((field) => <div key={field}><dt>{displayFieldLabel(field)}</dt><dd className={codeClassName(field, latest?.raw[field])}>{numericFields.includes(field as NumericField) ? displayValue(latest?.values[field as NumericField], 2) : displayRawField(field, latest?.raw[field])}</dd></div>)}</dl>
 						</section>)}</div>
 					</section>
 				</>}
