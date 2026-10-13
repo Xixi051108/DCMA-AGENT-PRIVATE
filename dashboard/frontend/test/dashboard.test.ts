@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { displayTime, displayValue, displayRaw, displayRawField, codeClassName, displayFieldLabel, fieldUnits, sampleIdentity, sampleRange, linePath } from "../src/dashboard-view.ts";
 import { dashboardExample } from "../../database/test/dashboard-example.ts";
-import { displaySamplingSpan, recentCodeHistory } from "../src/code-analysis.ts";
+import { displaySamplingSpan, eventSamplingRange, recentCodeHistory } from "../src/code-analysis.ts";
+import type { CodeEvent } from "../src/database-types.ts";
+
+test("事件回看保留已观察区间和前后5分钟，未结束不使用当前时间", () => {
+	const event: CodeEvent = { id: "fault/1", field: "fault_code", code: "F01030", startedAt: "2026-01-14T10:20:37.005Z", endedAt: null, lastSeenAt: "2026-01-14T10:27:24.814Z", samples: 2, ending: null, startUncertain: true, hasMissingSamples: true };
+	assert.deepEqual(eventSamplingRange(event), { from: "2026-01-14T10:15:37.000Z", to: "2026-01-14T10:32:25.000Z" });
+	assert.deepEqual(eventSamplingRange({ ...event, endedAt: "2026-01-14T10:28:00.000Z" }), { from: "2026-01-14T10:15:37.000Z", to: "2026-01-14T10:33:00.000Z" });
+	assert.deepEqual(eventSamplingRange({ ...event, lastSeenAt: event.startedAt }), { from: "2026-01-14T10:15:37.000Z", to: "2026-01-14T10:25:38.000Z" });
+	assert.equal(eventSamplingRange({ ...event, startedAt: "invalid" }), null);
+	assert.equal(eventSamplingRange({ ...event, lastSeenAt: "2026-01-14T10:00:00Z" }), null);
+});
 
 test("展板显示保留0、负数、原始代码并明确缺失值和北京时间", () => {
 	assert.equal(displayValue(0), "0");
