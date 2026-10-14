@@ -76,6 +76,8 @@ h2 { font-size: 18px; font-weight: 650; }
 .device-detail { border-top: 3px solid var(--blue); display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px; padding: 16px 20px; align-items: start; }
 .detail-heading h2 { font-size: 22px; line-height: 1.35; }
 .detail-heading .muted { font-size: 12px; margin-top: 5px; }
+.source-context { color: var(--muted); font-size: 12px; margin-top: 5px; }
+.sample-age { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
 .time-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .time-grid > div { min-width: 0; }
 .time-grid > div + div { border-left: 1px solid var(--border); padding-left: 16px; }
@@ -197,6 +199,9 @@ tbody tr:hover { background: var(--blue-soft); }
 .gauge-card svg { display: block; width: 100%; max-width: 240px; margin: auto; }
 .gauge-card svg text { font-size: 9px; fill: var(--muted); }
 .gauge-value { display: block; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px; overflow-wrap: anywhere; }
+.gauge-display-note { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
+.gauge-card[data-outside-range="true"] { border-color: #e3c98a; }
+.gauge-card[data-outside-range="true"] .gauge-display-note { color: #8a5a12; }
 @media (max-width: 1100px) { .gauge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1100px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .gauge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -228,6 +233,7 @@ tbody tr:hover { background: var(--blue-soft); }
 .settings-content { min-width: 0; }
 .settings-title { margin-bottom: 16px; }
 .settings-pending p { margin-top: 16px; }
+.device-source-footer { margin-top: 16px; }
 @media (max-width: 1100px) { .settings-layout { grid-template-columns: 1fr; } .settings-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); } .settings-nav a { justify-content: center; text-align: center; } }
 @media (max-width: 700px) { .settings-layout { gap: 16px; } .settings-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px; } .settings-nav a { font-size: 13px; padding: 10px 8px; } }
 .communication-settings { border-top: 3px solid var(--blue); }
@@ -297,6 +303,10 @@ tbody tr:hover { background: var(--blue-soft); }
   .page-header .eyebrow, .detail-heading .eyebrow { display: none; }
   .device-detail { gap: 12px; }
   .detail-heading h2 { font-size: 20px; }
+  .detail-heading .muted { display: none; }
+  .chart-controls { flex: 1; min-width: 0; justify-content: flex-end; }
+  .chart-controls label { width: 180px; max-width: 100%; font-size: 0; }
+  .chart-controls select { width: 100%; margin-left: 0; font-size: 13px; }
   .time-grid span { font-size: 12px; margin-bottom: 3px; }
   .time-grid strong { font-size: 13px; }
   .secondary-times summary { min-height: 36px; background: transparent; padding: 6px 0; }

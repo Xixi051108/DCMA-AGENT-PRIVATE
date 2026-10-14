@@ -98,7 +98,7 @@ async (page) => {
 		await source.selectOption("history");
 		await page.getByText("2026/01/14 18:27:24", { exact: true }).first().waitFor();
 		await page.getByRole("button", { name: "刷新数据", exact: true }).click();
-		await page.getByText("本次无新采样", { exact: true }).waitFor();
+		await page.getByText("历史记录 · 定期检查", { exact: true }).waitFor();
 		check((await page.locator(".device-detail").innerText()).includes("历史真实采集"), "历史来源标识错误");
 		await device.selectOption("2");
 		await page.getByRole("heading", { name: "G120电机2", exact: true }).waitFor();
