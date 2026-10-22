@@ -2,6 +2,10 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const components: Components = {
+	pre: ({ children }) => (
+		// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable code blocks need keyboard focus.
+		<pre tabIndex={0}>{children}</pre>
+	),
 	table: ({ children }) => (
 		// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable tables need focus for keyboard scrolling.
 		<section className="message-table-scroll" aria-label="表格，可横向滚动" tabIndex={0}>

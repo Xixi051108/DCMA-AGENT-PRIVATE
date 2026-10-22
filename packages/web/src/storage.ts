@@ -1,5 +1,8 @@
+import { toolLabels } from "./chat.ts";
 import { dashboardTables } from "./dashboard-data.ts";
 import { createDemoDatasets, defaultSettings, initialDevices } from "./mockData.ts";
+import { normalizeReply } from "./reply-text.ts";
+import { parseChatSource } from "./sources.ts";
 import { parseTelemetry } from "./telemetry.ts";
 import type { AppSettings, ConversationItem, Dataset } from "./types.ts";
 
@@ -66,19 +69,49 @@ export function loadWorkspace(): WorkspaceState {
 					)
 						return [];
 					return [
-						{
+						normalizeReply({
 							id: message.id,
 							role: message.role,
 							content: message.content,
 							timestamp: message.timestamp,
 							engine: typeof message.engine === "string" ? message.engine.replace(/^pi\b/iu, "DCMA") : undefined,
+							error: typeof message.error === "string" ? message.error : undefined,
+							dataSource: typeof message.dataSource === "string" ? message.dataSource : undefined,
+							tools: Array.isArray(message.tools)
+								? message.tools.slice(0, 32).flatMap((value: unknown) => {
+										if (!value || typeof value !== "object") return [];
+										const tool = value as Record<string, unknown>;
+										if (
+											typeof tool.id !== "string" ||
+											typeof tool.name !== "string" ||
+											!Object.hasOwn(toolLabels, tool.name)
+										)
+											return [];
+										if (
+											tool.status !== "running" &&
+											tool.status !== "done" &&
+											tool.status !== "error" &&
+											tool.status !== "cancelled"
+										)
+											return [];
+										const source = tool.status === "done" ? parseChatSource(tool.source) : undefined;
+										return [
+											{
+												id: tool.id,
+												name: tool.name,
+												status: tool.status === "running" ? ("cancelled" as const) : tool.status,
+												...(source ? { source } : {}),
+											},
+										];
+									})
+								: undefined,
 							status:
 								message.status === "error"
 									? ("error" as const)
 									: message.status === "streaming" || message.status === "cancelled"
 										? ("cancelled" as const)
 										: ("done" as const),
-						},
+						}),
 					];
 				});
 				return [

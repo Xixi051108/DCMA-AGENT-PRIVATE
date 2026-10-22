@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getBackendStatus, streamChat } from "./api.ts";
+import { chatHistory, finishReply, retryQuestion } from "./chat.ts";
 import { ChatInput } from "./components/ChatInput";
 import { ChatView } from "./components/ChatView";
 import { DeviceModal } from "./components/DeviceModal";
@@ -12,6 +13,7 @@ import { TelemetryModal } from "./components/TelemetryModal";
 import { WelcomeView } from "./components/WelcomeView";
 import { dashboardTables, databaseDataset, databaseDevice, databaseMetrics, useDashboard } from "./dashboard-data.ts";
 import { downloadText } from "./download.ts";
+import { createId } from "./id.ts";
 import { loadWorkspace, storageKey } from "./storage.ts";
 import { getMetrics, parseTelemetry, telemetryCsv } from "./telemetry.ts";
 import type { AppSettings, BackendStatus, ChatMessage } from "./types.ts";
@@ -111,13 +113,13 @@ export function App() {
 			setNotice("无法刷新模型列表，请检查后端服务。");
 		}
 	};
-	const sendMessage = async (text: string) => {
+	const sendMessage = async (text: string, retry = false) => {
 		if (!text.trim() || request.current) return;
 		if (workspace.conversations.length >= 50 && !conversation) {
 			setNotice("最多保留 50 个会话，请先导出并删除不需要的会话。");
 			return;
 		}
-		if ((conversation?.messages.length ?? 0) >= 198) {
+		if ((conversation?.messages.length ?? 0) + (retry ? 1 : 2) > 200) {
 			setNotice("当前会话已达到 200 条消息，请开启新对话。");
 			return;
 		}
@@ -125,14 +127,12 @@ export function App() {
 			setNotice("DCMA 模型不可用。请授权模型并在设置中选择。");
 			return;
 		}
-		const controller = new AbortController();
-		request.current = controller;
-		setBusy(true);
-		const id = conversation?.id ?? crypto.randomUUID();
-		const assistantId = crypto.randomUUID();
+		const id = conversation?.id ?? createId();
+		const assistantId = createId();
 		const now = new Date().toISOString();
+		const databasePreferred = !offline || settings.databaseEnabled !== false;
 		const userMessage: ChatMessage = {
-			id: crypto.randomUUID(),
+			id: createId(),
 			role: "user",
 			content: text.trim(),
 			timestamp: now,
@@ -145,13 +145,19 @@ export function App() {
 			timestamp: now,
 			status: "streaming",
 			engine: `DCMA Agent · ${settings.model}`,
+			dataSource: `${device.name} · ${databasePreferred ? databaseDataset(table, null).source : dataset.source}`,
 		};
+		const controller = new AbortController();
+		request.current = controller;
+		setBusy(true);
 		setWorkspace((state) => ({
 			...state,
 			activeId: id,
 			conversations: conversation
 				? state.conversations.map((item) =>
-						item.id === id ? { ...item, time: now, messages: [...item.messages, userMessage, assistant] } : item,
+						item.id === id
+							? { ...item, time: now, messages: [...item.messages, ...(retry ? [] : [userMessage]), assistant] }
+							: item,
 					)
 				: [
 						{
@@ -179,7 +185,6 @@ export function App() {
 				),
 			}));
 		try {
-			const databasePreferred = !offline || settings.databaseEnabled !== false;
 			await streamChat(
 				{
 					model: settings.model,
@@ -204,26 +209,26 @@ export function App() {
 							}),
 					database: databasePreferred,
 					table,
-					history: (conversation?.messages ?? [])
-						.filter((message) => message.status === "done")
-						.slice(-20)
-						.map(({ role, content }) => ({ role, content: content.slice(0, 8000) })),
+					history: chatHistory(conversation?.messages ?? [], retry),
 				},
 				controller.signal,
 				(delta) => updateReply((message) => ({ ...message, content: message.content + delta })),
+				(tool) =>
+					updateReply((message) => ({
+						...message,
+						tools: [...(message.tools ?? []).filter((item) => item.id !== tool.id), tool],
+					})),
 			);
-			updateReply((message) => ({
-				...message,
-				status: "done",
-			}));
+			controller.signal.throwIfAborted();
+			updateReply((message) => finishReply(message, "done"));
 		} catch (error) {
-			updateReply((message) => ({
-				...message,
-				status: controller.signal.aborted ? "cancelled" : "error",
-				content:
-					message.content +
-					(controller.signal.aborted ? "" : `\n${error instanceof Error ? error.message : "请求失败"}`),
-			}));
+			updateReply((message) =>
+				finishReply(
+					message,
+					controller.signal.aborted ? "cancelled" : "error",
+					controller.signal.aborted ? undefined : error instanceof Error ? error.message : "请求失败",
+				),
+			);
 		} finally {
 			if (request.current === controller) {
 				request.current = null;
@@ -331,7 +336,15 @@ export function App() {
 					</output>
 				)}
 				{conversation ? (
-					<ChatView messages={conversation.messages} isStreaming={busy} />
+					<ChatView
+						key={`messages-${conversation.id}`}
+						messages={conversation.messages}
+						isStreaming={busy}
+						onRetry={() => {
+							const text = retryQuestion(conversation.messages);
+							if (text) void sendMessage(text, true);
+						}}
+					/>
 				) : (
 					<WelcomeView
 						onSelectSuggestion={(text) => {

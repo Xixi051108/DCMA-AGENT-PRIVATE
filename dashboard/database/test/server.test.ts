@@ -55,6 +55,32 @@ test("只读接口在无凭据时明确失败，并拒绝写入、无效参数�
 	assert.equal((await fetch(`${base}/api/chat`)).status, 404);
 });
 
+test("显式允许的局域网地址可同源读取，仍拒绝其他 Host、跨域与写入", async (context) => {
+	const lanHost = "192.168.1.10:3000";
+	const server = createDatabaseServer([lanHost]);
+	server.listen(0, "127.0.0.1");
+	await once(server, "listening");
+	context.after(() => {
+		server.closeAllConnections();
+		server.close();
+	});
+	const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/database/catalog`;
+	const status = (host: string, origin?: string, method = "GET") => new Promise<number>((resolve, reject) => {
+		const request = get(base, { method, headers: { Host: host, ...(origin ? { Origin: origin } : {}) } }, (response) => {
+			response.resume();
+			resolve(response.statusCode ?? 0);
+		});
+		request.on("error", reject);
+	});
+	assert.equal(await status(lanHost), 200);
+	assert.equal(await status(lanHost, `http://${lanHost}`), 200);
+	assert.equal(await status("192.168.1.10:3001"), 403);
+	assert.equal(await status("192.168.1.11:3000"), 403);
+	assert.equal(await status("example.com:3000"), 403);
+	assert.equal(await status(lanHost, "http://192.168.1.11:3000"), 403);
+	assert.equal(await status(lanHost, `http://${lanHost}`, "POST"), 405);
+});
+
 test("展板时间、数值与结果窗口保留原值，排除无效时间并明确截断", () => {
 	assert.equal(parseCollectionTime("2026-01-14 18:27:24.814"), "2026-01-14T10:27:24.814Z");
 	assert.equal(parseCollectionTime("1768386444814"), "2026-01-14T10:27:24.814Z");

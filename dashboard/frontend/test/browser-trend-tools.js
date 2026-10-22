@@ -39,7 +39,7 @@ async (page) => {
 		check(await data.locator("thead th").count() === 3, "数据视图应仅包含时间和当前两项指标");
 		const actual = await data.locator("tbody tr td:last-child").allTextContents();
 		check(JSON.stringify(actual) === JSON.stringify(["0", "—", "-20", "15", "0.123456789"]), "数据视图未保留0、缺失、负数或精度");
-		check((await data.locator("tbody tr").first().innerText()).includes("12:00:00.000"), "数据视图应显示北京时间到毫秒");
+		check((await data.locator("tbody tr td:first-child").first().innerText()).endsWith("12:00:00"), "数据视图应显示北京时间到秒，不含毫秒");
 		for (const width of [1920, 1366, 768, 375]) {
 			await page.setViewportSize({ width, height: 1000 });
 			check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}实时页面横向溢出`);

@@ -11,11 +11,11 @@ function json(response: ServerResponse, status: number, value: unknown): void {
 	response.end(JSON.stringify(value));
 }
 
-export function createDatabaseServer() {
+export function createDatabaseServer(allowedHosts: readonly string[] = []) {
 	return createServer((request, response) => {
 		const host = request.headers.host ?? "";
-		if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host)) {
-			json(response, 403, { error: "仅允许本地访问" });
+		if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host) && !allowedHosts.includes(host)) {
+			json(response, 403, { error: "访问地址未获允许" });
 			return;
 		}
 		if (

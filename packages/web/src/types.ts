@@ -1,3 +1,5 @@
+import type { DashboardTable } from "../../../dashboard/database/dashboard-types.ts";
+
 export interface Device {
 	id: string;
 	code: string;
@@ -47,6 +49,21 @@ export interface ChatMessage {
 	timestamp: string;
 	status?: "streaming" | "done" | "error" | "cancelled";
 	engine?: string;
+	error?: string;
+	dataSource?: string;
+	tools?: ChatToolCall[];
+}
+export interface ChatToolCall {
+	id: string;
+	name: string;
+	status: "running" | "done" | "error" | "cancelled";
+	source?: ChatSource;
+}
+export interface ChatSource {
+	table: DashboardTable;
+	page: "realtime" | "records";
+	queriedAt: string;
+	returned: number;
 }
 export interface ConversationItem {
 	id: string;

@@ -1,4 +1,6 @@
-import type { BackendStatus } from "./types.ts";
+import { ReplyTextStream } from "./reply-text.ts";
+import { parseChatSource } from "./sources.ts";
+import type { BackendStatus, ChatToolCall } from "./types.ts";
 
 export async function getBackendStatus(signal?: AbortSignal, refresh = false): Promise<BackendStatus> {
 	const response = await fetch(refresh ? "/api/health?refresh=1" : "/api/health", { signal });
@@ -10,6 +12,7 @@ export async function streamChat(
 	payload: unknown,
 	signal: AbortSignal,
 	onDelta: (text: string) => void,
+	onTool?: (tool: ChatToolCall) => void,
 ): Promise<void> {
 	const response = await fetch("/api/chat", {
 		method: "POST",
@@ -18,7 +21,7 @@ export async function streamChat(
 		signal,
 	});
 	if (!response.ok) {
-		const body: unknown = await response.json();
+		const body: unknown = await response.json().catch(() => null);
 		throw new Error(
 			body && typeof body === "object" && "error" in body && typeof body.error === "string"
 				? body.error
@@ -30,14 +33,35 @@ export async function streamChat(
 	const decoder = new TextDecoder();
 	let buffer = "";
 	let finished = false;
+	const replyText = new ReplyTextStream(onDelta);
 	const consume = (line: string) => {
 		if (!line.trim()) return;
+		if (finished) return;
 		const event: unknown = JSON.parse(line);
 		if (!event || typeof event !== "object" || !("type" in event)) throw new Error("响应格式无效。");
-		if (event.type === "delta" && "text" in event && typeof event.text === "string") onDelta(event.text);
+		if (event.type === "delta" && "text" in event && typeof event.text === "string") replyText.push(event.text);
 		else if (event.type === "error" && "message" in event && typeof event.message === "string")
 			throw new Error(event.message);
-		else if (event.type === "done") finished = true;
+		else if (event.type === "tool") {
+			if (
+				!("id" in event) ||
+				typeof event.id !== "string" ||
+				!("name" in event) ||
+				typeof event.name !== "string" ||
+				!("status" in event) ||
+				!["running", "done", "error"].includes(String(event.status))
+			)
+				throw new Error("工具状态格式无效。");
+			onTool?.({
+				id: event.id,
+				name: event.name,
+				status: event.status as ChatToolCall["status"],
+				...(event.status === "done" && "source" in event ? { source: parseChatSource(event.source) } : {}),
+			});
+		} else if (event.type === "done") {
+			replyText.finish();
+			finished = true;
+		}
 	};
 	try {
 		while (true) {
@@ -46,6 +70,7 @@ export async function streamChat(
 			const lines = buffer.split("\n");
 			buffer = lines.pop() ?? "";
 			for (const line of lines) consume(line);
+			if (finished) break;
 			if (done) break;
 		}
 		consume(buffer);

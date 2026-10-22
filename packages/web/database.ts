@@ -1,4 +1,4 @@
-import { defineTool } from "@earendil-works/pi-coding-agent";
+import { type AgentToolResult, defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { type DashboardTable, dashboardTables, numericFields } from "../../dashboard/database/dashboard-types.ts";
 import {
@@ -7,6 +7,8 @@ import {
 	readDashboard,
 	readDatabaseRows,
 } from "../../dashboard/database/database.ts";
+import { fieldUnits } from "../../dashboard/frontend/src/dashboard-view.ts";
+import type { ChatSource } from "./src/types.ts";
 
 export {
 	closeDatabase,
@@ -27,7 +29,7 @@ export function createDatabaseTools(selectedTable: DashboardTable) {
 			parameters: Type.Object({
 				table: Type.Optional(Type.Union(dashboardTables.map((table) => Type.Literal(table)))),
 			}),
-			async execute(_id, params, signal) {
+			async execute(_id, params, signal): Promise<AgentToolResult<{ connected: boolean; source?: ChatSource }>> {
 				if (remaining-- <= 0) throw new Error("本轮数据库查询次数已达到上限。");
 				try {
 					const result = await readDashboard(params.table ?? selectedTable, 100, signal);
@@ -35,6 +37,7 @@ export function createDatabaseTools(selectedTable: DashboardTable) {
 						schema: result.schema,
 						table: result.table,
 						queriedAt: result.queriedAt,
+						units: fieldUnits,
 						latest: result.latest,
 						columns: ["id", "acquiredAt", ...numericFields],
 						rows: result.samples.map((sample) => [
@@ -54,7 +57,18 @@ export function createDatabaseTools(selectedTable: DashboardTable) {
 					}
 					if (Buffer.byteLength(JSON.stringify(report)) > 64000) throw new Error("DASHBOARD_RESULT_TOO_LARGE");
 					report.returned = report.rows.length;
-					return { content: [{ type: "text", text: JSON.stringify(report) }], details: { connected: true } };
+					return {
+						content: [{ type: "text", text: JSON.stringify(report) }],
+						details: {
+							connected: true,
+							source: {
+								table: report.table,
+								page: "realtime",
+								queriedAt: report.queriedAt,
+								returned: report.returned,
+							},
+						},
+					};
 				} catch (error) {
 					return {
 						content: [{ type: "text", text: JSON.stringify({ connected: false, error: databaseError(error) }) }],
@@ -81,7 +95,7 @@ export function createDatabaseTools(selectedTable: DashboardTable) {
 			name: "read_industrial_rows",
 			label: "读取工业设备数据",
 			description:
-				"只读查询实际工业表，支持设备字段等值筛选与时间范围筛选；只能使用目录中的库、表和列。默认20行，最多200行。必须注明数据来源、模拟/真实采集、返回窗口和单位不明等限制。",
+				"只读查询实际工业表，支持设备字段等值筛选与时间范围筛选；只能使用目录中的库、表和列。默认20行，最多200行。必须注明数据来源、模拟/真实采集和返回窗口；单位使用返回的展板单位映射，不再要求确认。",
 			parameters: Type.Object({
 				schema: Type.String({ maxLength: 64 }),
 				table: Type.String({ maxLength: 64 }),
@@ -97,13 +111,33 @@ export function createDatabaseTools(selectedTable: DashboardTable) {
 					),
 				),
 			}),
-			async execute(_id, params, signal) {
+			async execute(_id, params, signal): Promise<AgentToolResult<{ connected: boolean; source?: ChatSource }>> {
 				if (remaining-- <= 0) throw new Error("本轮数据库查询次数已达到上限。");
 				try {
-					if (params.schema !== "dcma" || !dashboardTables.some((table) => table === params.table))
-						throw new Error("无效的数据来源");
+					const table = dashboardTables.find((table) => table === params.table);
+					if (params.schema !== "dcma" || !table) throw new Error("无效的数据来源");
 					const result = await readDatabaseRows(params, signal);
-					return { content: [{ type: "text", text: JSON.stringify(result) }], details: { connected: true } };
+					return {
+						content: [
+							{
+								type: "text",
+								text: JSON.stringify({
+									...result,
+									units: fieldUnits,
+									note: result.note.replace("字段单位与设备关联需", "设备关联需"),
+								}),
+							},
+						],
+						details: {
+							connected: true,
+							source: {
+								table,
+								page: "records",
+								queriedAt: result.queriedAt,
+								returned: result.returned,
+							},
+						},
+					};
 				} catch (error) {
 					const message = databaseError(error);
 					return {
