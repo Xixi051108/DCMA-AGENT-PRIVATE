@@ -1,4 +1,258 @@
-# DCMA 工作交接：当前监控展板（附旧 Pi 学习记录）
+# DCMA 工作交接：Agent 交互、完整报告与自选保存路径
+
+## 最新同步：2026-10-25（Asia/Shanghai）
+
+- 用户要求：项目源码同步到公共仓库，完整源码和过程说明归档到个人仓库。
+- 公共仓库 `JACK-Chen415/DCMA-pi-Agent` 的 `main` 已推送至 `724628e827c381836559610d5259656f2e65486d`。旧展板的秒级时间显示改动已合入 pi，保留 Windows 自选保存功能。
+- 本轮实际验证：20项定向测试、展板类型检查及完整 `npm run check` 通过；隔离 Playwright 检查时间显示、PNG保存请求与路径回显、全屏、四档布局及异常状态。页面用合成数据和模拟保存接口，不代表原生窗口落盘、真实模型或数据库验收。
+- 个人仓库 `Xixi051108/DCMA-AGENT-PRIVATE` 实际为公开仓库。用户确认保持公开，仅上传代码和说明文档；手册原件、原始采样、聊天截图、原始答复、导出报告、凭据及运行数据不上传。
+- 个人仓库沿用现有根目录源码布局；本机实际运行源码仍在 `D:\DCMA-Agent\pi`，不要为同步在本机根目录展开重复源码。完整同步说明见 `SYNC.md`。
+- 下方记录保留为历史；其中“未提交”“未推送”和当时检查阻断不能代替本节的最新结果。
+
+## 最新交接：2026-10-22（Asia/Shanghai）
+
+### 当前任务与用户选择
+
+当前开发项目在 `D:\DCMA-Agent\pi`。本轮根据用户截图补齐 Agent 处理步骤、证据查看、语音、完整报告和阈值采样点计数，并修正工具预算计时。随后用户反馈报告、图片不能完整下载，明确要求“不要下载到C盘”“自己选路径，而不是写死在exports里面”。**最新导出已改为 Windows“另存为”，由用户选择文件夹与文件名，取消不保存，不再固定到 exports。** 用户已明确反馈保存窗口“出现了，可以选择文件夹”。
+
+此前用户选择先统计最近一小时温度超过50℃的采样点并绘图，暂不统计连续事件；现已提供确定性的条件采样点计数，不需要连续事件规则。后续又要求逐项完善剩余功能，并要求以后出现故障码／报警码时同时给出“原码＋具体含义”。没有重新调用付费模型验证原始超时场景，不宣称原模型超时根因已证明或截图全部要求已全面验收。
+
+**本节优先于下方历史记录。** 旧记录中的“只做展板”“pi只读”“未接入资料”“当前检查全部通过”“每个功能自动提交”等属于旧阶段，不代表当前状态；不要据此恢复旧任务、重复创建项目或自动提交。本轮“更新handoff”只修改本文件，不提交、不推送、不修改其他工作区文件。
+
+### 用户偏好与约束
+
+- 中文、直接解释。编码前理解现有调用链；重要不确定问题先确认；采用最简单的必要改动，不加未要求功能或顺手重构。
+- 终端用户回答避免内部字段、开发备注和多余括号。“台账”改称“设备资料”。当前prompt的设备基本信息默认包含静态资料和最近一小时概况；静态资料只列名称、厂家、型号、安装位置、投运日期，缺项合并说明，不主动罗列单位配置、额定值或状态规则。用户明确只查静态资料时不查采样。
+- 电机1～4全部为模拟设备，不按序号绑定两份真实电机说明书。四份知识文档可统一检索，但要保留来源、型号适用条件和资料性质。
+- `pi/AGENTS.md`：未要求不提交；禁止stash、reset --hard、clean、批量add；改代码后执行 `npm run check`，不自行运行完整build/test。修改测试必须执行对应测试。凭据不打印、不写入交接。
+- 不自动使用子代理，不触碰其他会话/用户改动。现场设备控制和数据库写入均未执行。
+- 故障码／报警码必须保留原码并同时给具体含义；非零码检索可靠资料，未知写“含义未确认”，保留手册出处与现场适用性限制；0仅说明该次采样未报告对应代码，不代表设备整体健康。
+- 报告、图片、数据每次导出都让用户选择保存路径；首次默认 D 盘，本次服务运行中记住上次选中的文件夹，不写死 exports，不使用浏览器默认 C 盘 Downloads。按当前实现不允许选择 C 盘。现有 C 盘旧下载、D 盘 exports 和 export 文件都保留，不自动删除。
+
+### 仓库、文件与运行状态
+
+- 工作区根目录 `D:\DCMA-Agent` 与嵌套 `D:\DCMA-Agent\pi` 是两个独立Git仓库。应用运行和修改以pi为准；不要在根目录拉取整套源码造成完整重复副本。
+- pi当前 `main` / HEAD为 `b12eb21e87608550dd7a9e8498403863853de4aa`，本地 `shared/main` 同SHA。本次交接未联网确认远程是否又有更新。
+- pi的 `shared` 是公共项目 `git@github.com:JACK-Chen415/DCMA-pi-Agent.git`；`origin` 是官方上游，不能误推。
+- 更新公共源码之前，已把40个已跟踪改动文件与10个新增源码/测试文件备份到个人仓库分支：[codex/local-backup-2026-10-22](https://github.com/Xixi051108/DCMA-AGENT-PRIVATE/tree/codex/local-backup-2026-10-22)，提交 `a67786476ca2d89f887a6c4874d5535e428d9c6c`；当时逐文件与远程SHA核对后才恢复并快进公共版本。
+- 当前统一服务地址 `http://127.0.0.1:3000/`，展板 `/dashboard/`；通常从pi根目录 `npm run web:dev` 启动，无需另起旧根目录展板3001服务。**本次交接重新核对监听PID为45224**，程序 `D:\DevTools\NodeJS\node.exe`，参数 `--import ../coding-agent/src/experimental/source-resolver.ts server.ts`，启动目录 `D:\DCMA-Agent\pi\packages\web`。日志 `.dcma-runtime/save-as-20261022-221203.stdout.log` 及对应stderr；这次交接实际健康检查connected=true、46个模型元数据，不代表调用过模型。PID可能失效，重启前核对当前端口与完整命令行，不能照抄旧PID停止无关进程；后台启动用隐藏窗口。
+- 普通沙箱会拒绝回环/数据库网络（EACCES或套接字权限错误）；只读查询及健康检查按工具提权后成功，不能把沙箱失败当成服务宕机或凭据错误。Vite曾因扫描EPERM需要同样处理。
+- 模型截图为 `deepseek/deepseek-v4-pro`。本次诊断未调用付费模型，不能把旧Pi学习阶段的OpenAI OAuth模型状态当成本应用当前模型。
+
+交接时pi有大量未提交改动：`biome.json`、`dashboard/frontend/src/components/TrendChart.tsx`、web的server、README、api、App、download、report、storage、types、样式及多个组件，tools的analytics、index、http、knowledge、prompt、runtime-files等。**所有内容仍在工作区，未提交、未推送。** 继续前用 `git -C D:\DCMA-Agent\pi status --short` 核对，不清理、重置或批量暂存；不要把别的会话改动当成可覆盖内容。
+
+关键未跟踪源码：`packages/web/interaction-contracts.ts`；src下`chart-render.ts`、`evidence.ts`、`speech.ts`、`conversation-state.ts`、`conversation-storage.ts`、`components/ExecutionDetails.tsx`、`ReportActions.tsx`、`SpeakButton.tsx`；tools下`chat-runs.ts`、`chat-timeout.ts`、`conversation-store.ts`、`evidence-files.ts`、`exports.ts`、`save-dialog.ts`、`save-dialog.ps1`；test下`interaction`、`report`、`speech`、`chat-runs`、`conversations`、`exports`等测试。知识导入和模拟资料脚本仍未跟踪。若以后获准提交，不能遗漏新增源码或原生保存脚本；`.playwright-cli/`、`output/`及运行数据不要混入源码提交。
+
+根仓库HEAD仍为 `456017ebc1126346fe5279046decab6db62c07bd`，有HANDOFF、多个旧 `dashboard/frontend` 文件的既有改动、未跟踪资料和 `export/`。根 `.gitignore` 已加 `exports/`，并继续忽略pi；单数 `export/` 未忽略。实际运行应用是pi里的dashboard，不要误改根目录旧副本。`.artifacts/`、知识索引、profiles、会话和证据等本机数据不等于已有Git备份。当前“更新handoff”只修改本文件，不改应用、不提交或推送。
+
+### 已完成：知识与模拟设备资料
+
+四份原件位于 `D:\DCMA-Agent\knowledge`：
+
+1. `90L-4三相异步电动机使用说明书.docx`：参数、运行及维护参考。
+2. `YFB801-2粉尘防爆三相异步电动机使用说明书.docx`：参数、防爆及维护参考。
+3. `0.75kW与1.5kW电机对拖试验故障模拟实施方案（YFB801-2+90L-4）.docx`：试验场景，不能当厂家故障码定义。
+4. `S120_故障手册.pdf`：779页，SINAMICS S120/S150故障/报警码，保留06/2020版本与适用条件。
+
+`scripts/import-knowledge.py`用标准库解析DOCX、pypdf解析PDF。生成 `pi/packages/web/.dcma-runtime/knowledge.json`，本次核对大小3,204,123字节；前序核对1662条，PDF中1575个实际定义、1484个不同原始代码。解析器保留页码/印刷页、跨页正文、同码不同驱动对象；索引手册明确标注的F/A别名，不把交叉引用误当定义。PDF源页8、378、379此前已渲染目视核对。
+
+`tools/knowledge.ts`知识源限额8MiB/2000条，设备资料源仍1MiB；故障查找返回完整text并保留既有48KB结果预算。`tools/prompt.ts`指导先检索未知手册身份再精确查码，区分资料可检索与现场适用性；不因设备额定值缺失而声称知识库未接入。
+
+`scripts/configure-simulation-profiles.ts`复用现有单位映射生成 `packages/web/.dcma-runtime/profiles.json`，本次核对3719字节。四个模拟来源各18个单位，厂家、型号、版本、额定值及状态规则未编造；用wx拒绝覆盖已有文件。故障码0表示该采样未报告故障，报警码0同理；缺失不等于0，控制字/状态字不套用该规则，零码不代表整体健康或正在运行。单位存JSON配置，不是LLM memory。
+
+最终用户表达规则及“基本信息”范围已加入 `tools/prompt.ts`；当前默认用同一个一小时窗口统计温度、电压、电流、转速与故障／报警事件概况，不拿近期100条代替完整一小时。用户指定时段用指定范围，静态资料请求例外；无状态规则不说运行正常，不为概况编造事件间隔或阈值。前端只是渲染模型Markdown，原表格每行不是固定模板。旧聊天回答不会随提示词改动自动更新。
+
+### 已完成：超时排查实测与图表
+
+原截图：`C:\Users\43521\AppData\Local\Temp\codex-clipboard-2e685b75-acbd-44a7-8bd2-8fdb7dcefa7f.png`，电机1模拟来源；询问超50℃采样点与事件次数，补充“最近一小时”后超时。
+
+2026-10-22实际只读测量窗口：**北京时间15:35:48.156～16:35:48.156**（UTC07:35:48.156～08:35:48.156），来源 `real_data_01`：
+
+| 项目 | 实测结果 |
+|---|---|
+| 查询 | 1208毫秒，`readAnalysisRows`完整窗口 |
+| 本地统计 | 约4毫秒，`summarizeMetrics`及采样点计数 |
+| 总采样/有效温度 | 900 / 900，温度无缺失 |
+| 温度严格大于50℃ | 0条；暂未统计连续事件 |
+| 温度范围 | 约36.018～40℃，均值约38.008℃ |
+| 完整规范化记录JSON | 1,535,364字节（含raw等字段，不代表数据库传输字节或模型实际输入） |
+| 统计摘要JSON | 1560字节；不是原失败请求的token测量 |
+
+结论：这批数据远低于2万行/16MiB工具窗口上限，查询与计算很快，**没有证据把原超时归因于数据量过大**。只是当前窗口测量，不能据此断言原请求每一步同样快，更不能直接认定DeepSeek服务故障。
+
+本地证据均在 `D:\DCMA-Agent\pi\.artifacts`：
+
+- `measure-temperature.mjs`：安全加载web/.env，真实只读查询、计时、统计；finally关闭数据库连接。重新运行会覆盖测量结果且使用新的最近一小时。
+- `temperature-measurement.json`：上述固定窗口的测量与摘要。
+- `temperature-window.json`：同一窗口的完整规范化记录，只留本地，不放进模型上下文或Git。
+- `plot-temperature.mjs`：用已安装ECharts做SSR SVG，再用内置运行时sharp转PNG；断言900条有效温度、0条超50℃。
+- `temperature-last-hour.png`、`.svg`、`.csv`：已交付图表及900条数据CSV；PNG已实际打开目视核对，保留50℃参考线及模拟来源说明。图表在Codex回复交付，没有写入应用聊天，也不代表页面绘图链路验收。
+
+### 已完成：交互、证据、计数与完整报告
+
+- 工具预算改为累计实际执行90秒，单工具最多30秒；`tools/chat-timeout.ts`区分120秒无进展与5分钟总时限，输出当前阶段、保留部分结果。原故障的精确时序仍未复现，不能因代码已修正就宣称根因已证实。
+- `summarize_metrics.condition`支持严格大于／小于阈值的采样点计数，等于不命中，缺失不当0；不是连续事件计数。工具总数仍17。
+- 工具进度和耗时在聊天显示，步骤与成功证据随会话保存；展开可读来源、北京时间、数量、统计、条件、资料原文和精确查询结果。证据快照在 `.dcma-runtime/evidence/`，每轮2MiB、最多100轮，满后人工归档，不自动删除；旧会话不补查快照。
+- 独立HTML完整报告包含当前问题、Markdown回答、内嵌SVG图表、完整图表快照数据和证据；离线打开无需本机服务，可浏览器打印PDF。快照缺失时拒绝伪完整导出。未新增Word或独立PDF生成器，不自动合并整个会话其他轮次。
+- 语音：中文输入→可编辑→手动发送；回答朗读／停止，输入与朗读互斥；增加麦克风预检查、释放音轨、权限／设备／占用／识别服务错误区分及取消保护。IAB可能有接口但不能采集，Chrome或Win+H是可用建议；真实麦克风与听感未验收，不能写为已解决所有语音问题。
+- 会话后端持久化、刷新重新订阅同一生成任务、保留步骤与证据已接入；重启后端会终止在途模型任务，已保存历史仍保留。旧回答不会因新提示词自动重写。
+- 详细前序验收在 `pi/packages/web/tools/交互与报告验收记录_2026-10-22.md`；其下载部分记录早期Chrome浏览器下载，**当前保存方式以本节“另存为”为准**。
+
+### 已完成：报告／图片／CSV自选保存路径
+
+- `tools/exports.ts`统一POST `/api/exports`：校验普通建议文件名、匹配MIME及HTML/MD/TXT/JSON/CSV/PNG/SVG扩展，最大32MiB；server保留本机Host／同源限制及 `X-DCMA-Client: web`。接收完整有效内容后才打开选择窗口，不接受浏览器任意指定服务器目的路径。
+- `tools/save-dialog.ts`启动本机PowerShell的 `save-dialog.ps1`，使用Windows Forms SaveFileDialog。选项通过Base64 JSON环境变量传递，不拼接可执行命令文本；控制台隐藏，用透明置顶owner显示系统保存窗口。最终保留标准现代窗口，**没有** `AutoUpgradeEnabled=false`。初始D盘；上次选择仅在当前进程内记忆；窗口串行，已有窗口未完成时提示先保存／取消。
+- 取消返回 `{cancelled:true}`，客户端 `saveExportFile()`返回空字符串并提示“已取消保存”，不当错误或成功路径。等待用户选位置时已移除原60秒fetch超时；页面断连会中止选择进程。只有选定后才在同一目录写临时文件、sync后rename替换，失败清理临时文件并保留原文件；同名覆盖由系统窗口确认，不再自动加序号。
+- `src/download.ts`是共享入口，`ReportActions`、`AnalysisChartCard`、`MessageContent`中的本地证据链接，以及pi展板 `dashboard/frontend/src/components/TrendChart.tsx`都走它；`App.tsx`接收全局状态，报告／图片卡片显示实际路径。旧独立展板服务没有该接口，使用统一3000服务。
+- 图表下载保留前轮修复：不再要求图表当前可见才能下载；无实例时使用完整范围；PNG转换有15秒超时，失败后按钮可恢复；SVG／CSV与HTML一样可自选位置。
+- 实证：页面展示完整报告保存为 `D:\DCMA-Agent\export\DCMA-analysis-7b53db39-8d30-4fd4-808b-068eb6eaaadf.html`，实际文件241486字节。用户明确确认系统保存窗口“出现了，可以选择文件夹”。自动化 `sky.list_windows()`没有列出该PowerShell拥有的窗口，**不能据此认定窗口未显示，也不要重复拉起许多窗口**。后期最终窗口细节调整后未再次逐格式端到端保存，相关测试覆盖内容和取消／覆盖保护。
+- 早期固定D盘版本已在IAB实际保存HTML、PNG、SVG、CSV及展板PNG到 `D:\DCMA-Agent\exports`，完整900点PNG已目视核对。该固定目录实现已被用户自选路径替代，旧文件不删。临时测试IAB页已关闭，未改用户Chrome标签页；诊断日志 `dialog-debug.log`已移除，不保留诊断插桩。
+
+### 验证记录与当前限制
+
+- 前序本会话完成：知识测试4项、导入器Python测试4项；已有工具注册/知识查找测试；实际知识库直调核对F01030、跨378～379页F30001、A05000、F01004别名及F01040多个对象定义；模拟资料4来源/18单位/不覆盖检查。针对性严格TypeScript、Biome与diff检查通过。这些不是本次交接重新运行的结果。
+- 前序按规则执行过 `npm run check`：基础格式、依赖/导入/入口/安装锁检查通过，但根TypeScript被公共版本已有模型目录不一致阻断：`opencode-go.ts`未注册google-generative-ai，以及旧mimo-v2.5-pro、OpenRouter Sonnet4、OpenCodeGo DeepSeekV4 Flash引用。此前本地修复已在公共同步前备份，用户选择覆盖公共源码，不能未经要求再搬回来。**下方2026-10-17旧CI绿灯不表示当前pi检查通过。**
+- 缺ECharts依赖曾通过 `npm install --ignore-scripts --no-audit --no-fund --prefer-offline`补齐；安装意外改变的lock元数据已恢复，当前lock无改动。
+- 前序数据诊断实际运行只读测量脚本和图表脚本，完成900点/0超限断言与PNG目视核对；没有真实模型验收、没有运行应用build或完整测试。诊断时 `git diff --check`通过。
+- 本次handoff仅文档更新：核对文件、Git状态、证据文件、健康接口，保存后复读及检查diff；不为文档重跑应用测试。
+- 前序交互／报告验收：6个指定测试文件共25项通过；现有工具／图表9个指定文件38项中36通过，2失败是Windows权限差异（POSIX0600断言实际0666；符号链接EPERM）。隔离Chrome合成数据验收10组通过，包含步骤、证据、报告离线、语音模拟、响应式和刷新；这不是付费模型或真实麦克风验收。
+- 最新自选保存改动实际运行 `node --test packages/web/test/exports.test.ts packages/web/test/report.test.ts`：**8项通过**，覆盖自选文件名、精确文本／图片字节、不同内容同名替换、取消无文件、写入失败保留已有文件、非法请求与超32MiB拒绝、前端取消提示与真实路径。
+- 最新 `npx tsc -p packages/web/tsconfig.json`、改动文件Biome、`git diff --check`通过。前轮固定D盘导出时 `npm --prefix dashboard run check`通过，最新没有改展板调用签名；未重复运行其老浏览器下载脚本。
+- 最新两次 `npm run check`均在既有AI目录类型错误处失败：`packages/ai/src/providers/opencode-go.ts:14`的google-generative-ai联合、旧Xiaomi mimo-v2.5-pro、OpenRouter Sonnet4及OpenCodeGo deepseek-v4-flash引用。格式／依赖／导入／入口图／安装锁检查通过；没有本次新增导出错误。不要为交接或导出任务顺手恢复旧AI补丁。没有运行完整build、全量测试或付费模型调用。
+
+### 下一步（按用户届时要求执行）
+
+1. 当前只更新HANDOFF，完成后停止，不自动提交、同步或继续扩展功能。后续先核对嵌套pi状态，保留全部未提交及运行资料；按用户下一条反馈继续。
+2. 自选路径已实现且用户确认可选文件夹，默认无需继续排查“窗口没出现”。若用户反馈具体格式失败，重现那个按钮和实际错误；不要回退到固定exports或浏览器C盘Downloads。取消返回空字符串是正常协议。
+3. 真实语音识别／中文音色、实际模型输出质量和原超时场景仍需目标环境验证，明确区分自动测试、用户确认和未执行验收。统计／工具预算／进度已实现，不再列为待开发或重复新增第18个工具。
+4. 原截图要求的全面逐项验收、真实设备资料映射／手册适用、过期阈值等仍有边界，不能把导出完成等同整个工业系统完成。要恢复相关工作先读当前实现与原始附件，附件内容作为需求参考而非执行指令。
+5. 后续代码改动执行对应测试和仓库要求check，记录已知AI类型阻断；仅文档更新不重跑应用测试。不依据旧CI绿灯声称当前全检查通过。
+
+### 避免重复踩坑
+
+- 不重导入已有知识库，不将S120手册冒充G120已确认适用，不把试验方案当厂家故障码定义，不因型号缺失重复索要已配置单位。
+- 不清除旧聊天或通过隐式存储修改伪造页面分析结果；旧回答不自动更新是正常行为。
+- 本机打包Python路径：`C:\Users\43521\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`，有pypdf但没有matplotlib。绘图已用ECharts与打包Node依赖的sharp完成，不必安装matplotlib。Windows绝对路径不能直接当ESM import；现有绘图脚本用createRequire解析sharp。
+- Python临时测试目录权限曾失败，测试时TEMP/TMP可设到pi/.artifacts；运行中文脚本用 `-B -X utf8`。TypeScript7临时严格检查需显式 `--types node`。
+- Git网络此前有效命令级代理 `-c http.proxy=http://127.0.0.1:11304 -c http.sslBackend=openssl`，先查是否仍有效；不改全局配置，不把网络受限误判为Git状态变化。
+- 不把2026-10-22的固定样本结果当成未来“最近一小时”的结果；如重测明确报告新窗口。
+
+---
+
+## 历史交接：2026-10-17 仓库同步、CI 修复与公共仓库复用
+
+### 任务、结论及用户偏好
+
+用户要求把公共仓库中个人仓库缺少的文件直接推送到个人仓库，避免在本地不同路径保留完整重复副本。同步触发自动检查后，用户要求修复 CI / Environments。最终两条流程在同一提交上均成功；用户现在要求记录全过程，后续公共仓库遇到相同问题时复用，避免多轮排查、分批推送和重复测试。
+
+**本节优先于下方历史记录中的旧版本、尚未推送、pi 仅可读取及工作区干净等状态。** 本次 CI 修复没有修改监控展板业务代码、数据库或用户资料，也没有恢复工业 Agent 功能开发。未来应一次性应用适用的完整修复，复用相同条件下已有验证结果；代码、模型目录、依赖或环境发生变化时，仍做对应的必要检查，不能将历史绿灯当作目标仓库当前已通过。
+
+### 仓库与本地状态（本次记录时已核对）
+
+| 位置 | 状态 |
+|---|---|
+| 个人仓库 | `Xixi051108/DCMA-AGENT-PRIVATE`，用户确认实际公开可见；远程 main 最终修复为 `cddb870221b428a873144b7ba006d9bd7f26ba82` |
+| 公共仓库 | `JACK-Chen415/DCMA-pi-Agent`；同步所用 main 为 `668598cec09b0c4ab90feace9179d4d2ad82f66f`。本轮没有向公共仓库推送修复，未来先重新查询远程头 |
+| 根目录 `D:\DCMA-Agent` | origin 指向个人仓库；本地 main / HEAD 仍为 `456017ebc1126346fe5279046decab6db62c07bd`，origin/main 已为 `cddb870...`。本次只更新远程，没有检出新增源码 |
+| 嵌套 `D:\DCMA-Agent\pi` | 本地 main / HEAD 为 `668598cec...`，保留本次 17 个已跟踪文件的未提交修改和新增未跟踪的 `packages/ai/test/opencode-go.test.ts`。本次逐文件 Git blob 核对，18 个文件全部与个人仓库 `cddb870...` 一致；不要把这些已验证修改清掉 |
+| pi 的 remotes | origin 是官方上游 `https://github.com/earendil-works/pi.git`；shared 才是公共项目 `git@github.com:JACK-Chen415/DCMA-pi-Agent.git`，不要误推 origin |
+| 其他本地资料 | 根目录 `agent-evaluation/`、`knowledge/` 原有未跟踪内容保留，未纳入同步；数据库 .env、模型凭据未纳入提交 |
+
+不要为了追上远程而直接在根目录 git pull 或检出整套源码，这会与 pi 形成完整重复副本。操作前先分清仓库、工作目录和分支。本次记录仅更新本地 HANDOFF.md，未另行提交或推送文档。
+
+### 一、文件同步经过
+
+1. 比较个人基线 `456017ebc...` 与公共来源 `668598cec...` 的 Git 树相对路径，仅同步来源仓库已跟踪的缺失文件。
+2. 公共版本有 2,045 个文件，个人原有 76 个；新增 1,976 个，结果为 2,052 个。共有的 69 个路径全部保留个人版本，其中 7 个内容不同也未覆盖。
+3. 复用本机 pi 已核对的 Git 对象，借助临时 GIT_INDEX_FILE、read-tree、update-index、write-tree、commit-tree 创建以个人远程头为父提交的新提交，推送明确 SHA 到个人 main；没有在根目录检出第二套源码。
+4. 同步提交为 `943ab199c9d0ea7f3678dc72fb9ef5a8128116a3`。已验证只有新增，新增内容和文件模式与来源一致，个人原有文件不变，并核对推送后远程 SHA。
+5. 缺失文件包括 .github/workflows，故推送后触发公共源码自带自动检查。Run failed 邮件表示检查失败，文件推送本身已成功。
+
+### 二、故障链与最终修复
+
+| 阶段 | 实际原因 / 表现 | 已验证处理 |
+|---|---|---|
+| 构建 | build 联网刷新模型目录，OpenCode Go 新出现 google-generative-ai 模型，但类型联合与实现表未注册，报 TS2322 | 复用 opencode.ts 的方式：导入 googleGenerativeAIApi，将协议加入 OpenCodeGoApi，通过 withOpenCodeSessionHeader 注册；新增测试覆盖 stream、streamSimple 及 x-opencode-session |
+| 静态检查 | 目录已移除 Xiaomi mimo-v2.5-pro、OpenRouter anthropic/claude-sonnet-4、OpenCode Go deepseek-v4-flash；旧测试仍引用，报 TS2345 | Xiaomi 目录测试改用 mimo-v2.6-pro，替代型号断言改为 mimo-v2.6-flash / mimo-v2.6-pro；OpenRouter 改用 anthropic/claude-sonnet-4.6；DeepSeek V4 Flash 覆盖保留在仍列出它的 opencode，级别为 low/high/max；Go 的 V4.1 用例保留 |
+| 目录元数据 | Sonnet 5.5 当前 cacheRead 为 0.1，旧测试预期 0.2 | 更新 supports-xhigh.test.ts 对应价格断言，其余能力断言保留 |
+| 完整测试：默认模型 | coding-agent 四个 Xiaomi 默认值仍指向 mimo-v2.5-pro | defaultModelPerProvider 的四个 Xiaomi 默认值更新为 mimo-v2.6-pro；不改独立自定义模型示例及已发布的历史 CHANGELOG |
+| 完整测试：模型注册 | 31 处 OpenRouter Sonnet 4 引用无法命中，13 项覆盖/缓存/路由等用例失败 | model-registry.test.ts 统一采用现存的 anthropic/claude-sonnet-4.6，保留测试逻辑 |
+| 完整测试：登录渲染 | TUI Input 新增 APC 假光标标记，测试 helper 的 stripAnsi 不会去掉，导致两项活动输入精确比较失败 | 用现成的 stripTerminalSequences 清理测试输出，保留文本断言；登录产品逻辑未修改 |
+
+三笔修复提交：
+
+- `bd0f45739c03f8b45fdd4fcb62f2204ac4d802df`：Gemini 协议注册、类型及两项回归。
+- `359fd4ed72e629851595533f8e55efacf8bc3faf`：AI 测试的旧模型引用、目录元数据断言。
+- `cddb870221b428a873144b7ba006d9bd7f26ba82`：coding-agent 默认模型、模型注册测试及光标标记清理。
+
+**以后复用 943ab199c 到 cddb870 的完整修复差异，不要只搬第一笔 Gemini 修复；也不要把新增 1,976 文件的初次同步提交搬入本已包含源码的公共仓库。** 本轮多次推送是构建、检查、完整测试依次暴露遗留问题；这些原因现在已经明确，后续先一次性处理全部适用项，再验证和推送。
+
+### 三、完整修复清单：18 个文件，相对仓库根目录
+
+```text
+packages/ai/src/providers/opencode-go.ts
+packages/ai/test/opencode-go.test.ts
+packages/ai/test/abort.test.ts
+packages/ai/test/context-overflow.test.ts
+packages/ai/test/cross-provider-handoff.test.ts
+packages/ai/test/empty.test.ts
+packages/ai/test/image-tool-result.test.ts
+packages/ai/test/openai-completions-tool-choice.test.ts
+packages/ai/test/stream.test.ts
+packages/ai/test/supports-xhigh.test.ts
+packages/ai/test/tokens.test.ts
+packages/ai/test/tool-call-without-result.test.ts
+packages/ai/test/total-tokens.test.ts
+packages/ai/test/unicode-surrogate.test.ts
+packages/ai/test/xiaomi-models.test.ts
+packages/coding-agent/src/core/model-resolver.ts
+packages/coding-agent/test/model-registry.test.ts
+packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts
+```
+
+直接查看已验证补丁：
+
+```powershell
+git -C D:\DCMA-Agent diff --stat 943ab199c9d0ea7f3678dc72fb9ef5a8128116a3 cddb870221b428a873144b7ba006d9bd7f26ba82
+git -C D:\DCMA-Agent diff 943ab199c9d0ea7f3678dc72fb9ef5a8128116a3 cddb870221b428a873144b7ba006d9bd7f26ba82 -- packages/ai packages/coding-agent
+```
+
+### 四、实际验证证据
+
+- Gemini 回归在修复前实际失败，提示没有 google-generative-ai 实现；修复后与现有 provider 测试共 32 项通过。
+- 本机旧 JSON 模型缓存下最初 check 通过，但线上会刷新目录，才暴露旧模型名称。之后在 pi 实际执行 npm run hydrate:model-data，刷新被忽略的 packages/ai/src/providers/data，再在相同的新目录下验证；没有手改 models.generated.ts 或生成的 .models.ts。
+- 最终本机 AI 针对性验证：131 项通过，663 项需真实凭据的用例按原规则跳过。coding-agent 的模型注册、模型选择及登录输入回归：143 项全部通过。此处不是整个 CI 的测试总数。
+- 最后一次完整 npm run check 通过：Biome、依赖固定/声明、相对导入、入口图、安装锁、TypeScript、browser smoke 及 web 类型检查；最终 diff 检查通过。
+- **同一提交 cddb870221b428a873144b7ba006d9bd7f26ba82 的 [CI](https://github.com/Xixi051108/DCMA-AGENT-PRIVATE/actions/runs/39015914305) 为 completed/success（2 项任务），[Environments](https://github.com/Xixi051108/DCMA-AGENT-PRIVATE/actions/runs/39015933623) 为 completed/success（20 项任务）。** CI 包含构建、静态检查、完整测试及 MCP conformance。不要用早期失败邮件或过渡提交状态替代此结论。
+- Environments 的 push 路径过滤不覆盖普通 AI 文件修改；本次用已有 workflow_dispatch 在最新 main 上触发。必要时在全部修复完成后手动运行一次，不重跑旧 SHA，也不改无关文件来触发。
+- 临时提交、测试及触发脚本已删除；复用依据是 Git 提交、上述 18 文件、当前 pi 修改和远程验证结果，不依赖 Temp 脚本。
+
+### 五、公共仓库以后复用：避免多轮试错
+
+1. **先核对。** 查询目标公共分支/远程头，检查 pi 状态及是否已有修复。目前本机 18 文件已与成功提交逐 blob 一致，优先复用；不要覆盖、清理或重复修改，不用 reset --hard、clean、stash 清工作区。
+2. **一次性应用完整适用差异。** 基线相同则复用三个修复提交的同一补丁；目标有新改动则只处理实际差异、保留他人修改。需要时取个人仓库 Git 对象，不 merge 整个个人仓库，不复制个人 HANDOFF、资料或凭据。
+3. **先对齐模型目录。** 仍采用联网生成时，先刷新公开目录，然后一起核对协议注册、目录引用、默认模型、价格断言及终端标记。以后模型可能再次退役，不能机械照抄本节名称。
+4. **只做必要验证。** 原样复用且目录、依赖、环境相同时，沿用本节回归证据，完成仓库要求的静态检查和最终 diff；不重现已知错误、不反复运行同一套已通过测试。存在新差异或修改了测试时，只补运行对应测试，再统一推送一次。远程 CI 通过后停止重复验证。不能通过关工作流、删断言、加 skip 或放宽类型换绿灯。
+5. **推送正确目标。** 按用户届时指定分支执行，只纳入明确相关路径；公共项目为 shared / JACK-Chen415/DCMA-pi-Agent，不是 pi/origin 官方上游。推送前核对远程头，非强制推送，推送后核对 SHA 和对应工作流。本次仅记录，尚未替公共仓库提交或推送。
+
+针对性集合：AI 单元测试为 opencode-go、providers、openai-completions-tool-choice、supports-xhigh、xiaomi-models 五个 .test.ts；coding-agent 为 model-registry.test.ts、model-resolver.test.ts、suite/regressions/5433-extension-oauth-prompt-input.test.ts。其余已改 AI 文件主要是凭据相关集成用例，类型检查验证目录引用；未获真实模型调用授权时，不启用这些 API 测试。
+
+### 六、环境问题与避免重复踩坑
+
+- 当时有效代理为 http://127.0.0.1:11304；Git 命令级使用 -c http.proxy=http://127.0.0.1:11304 -c http.sslBackend=openssl 成功，不改全局配置。直连曾超时/重置，schannel 曾报 SEC_E_NO_CREDENTIALS；不反复直连下载完整历史。未来先检查代理是否仍有效。
+- Node 刷新目录时临时设置 NODE_USE_ENV_PROXY=1、HTTP_PROXY、HTTPS_PROXY 到代理，再运行 npm run hydrate:model-data；不调用付费模型，也不需要读取 API Key。
+- 测试隔离真实凭据和 OAuth 存储，沿用 test.sh 的空白 HOME/USERPROFILE 与环境白名单策略；不在用户已登录环境直接运行可能启用付费 API 的整个 Vitest。
+- 首次 Vitest / esbuild 被普通沙箱以 spawn EPERM 阻止，按工具权限流程运行后正常；不是源码失败。
+- 本机默认 bash.exe 可能命中 C:\Windows\System32\bash.exe（WSL），曾让隔离测试中 10 项命令模拟失败。在测试子进程 PATH 前置 D:\git for windows\Git\bin 和 D:\git for windows\Git\usr\bin 后，143 项通过；不为此改产品 shell 逻辑或系统 PATH。
+
+### 未完成事项与下一步
+
+个人仓库本次 CI 修复已完成，没有已知阻塞；公共仓库尚未提交或推送修复。当前只保存复用记录，不自动启动公共同步。未来用户要求公共仓库处理同样问题时，先读本节、核对现有 18 个改动，再一次性移植及进行必要验证。下方保留历史业务和学习记录，其中旧范围限制不覆盖用户后来的明确授权。
+
+---
+
+## 历史交接：2026-10-14 及以前的展板与 Pi 学习记录
+
 
 2026-10-14仓库同步：用户明确要求同步个人仓库和公共仓库。两轮展板优化（`e8db942c9`与`dd4e5e7f7`）已推送个人`Xixi051108/DCMA-AGENT-PRIVATE`的main，远程代码版本已核对为`dd4e5e7f7aa766561a5e2406b507b0d910c3a026`；公共`JACK-Chen415/DCMA-pi-Agent`沿用dashboard分支，提交`7d51ed4a1699f7f17e2dac9ab548fbe7a142d035`已推送并核对。公共main仍为`424bf0ddd005f620cce29e3acc009f4ee8284f9e`，没有合并或更新。公共仅同步18个展板代码/测试文件及适配后的dashboard/README；18个文件的Git内容与个人代码版本逐一一致，公共安装说明及原有浏览器验收命令保留，不复制个人HANDOFF、根文档、knowledge、凭据或临时输出。本次公共dashboard前后端类型检查、9项前端单元测试及6个同步浏览器脚本语法检查通过；仓库整体npm run check和提交钩子通过，Biome检查1538文件且无修复；本次同步未重复构建或展板浏览器验收，前两轮证据见下。个人本文件的既有资料交接及两轮记录保留，随文档提交同步main；knowledge/仍未跟踪，仅留本地。推送使用命令级HTTP代理，不更改远程或全局Git配置，未部署。此条及当前用户授权替代下方历史阶段的“不推送”“公共pi仅可读取”等限制；后续按用户反馈继续。
 
