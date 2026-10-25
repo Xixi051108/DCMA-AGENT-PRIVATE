@@ -1,36 +1,55 @@
 # DCMA 电机监控展板
 
-独立项目位于个人仓库 `Xixi051108/DCMA-AGENT-PRIVATE` 的 `main`。前端为 React / TypeScript / Vite / Tailwind，后端为 Node / MySQL，只查询 `dcma` 库的五张已确认表。无需启动 Pi SDK。
+## 与 Agent 聊天页连接
 
-页面采用深蓝侧边栏、青色选中态与浅色数据面板，七个菜单均只显示“查看设备”选中的一台电机。正式页面只显示接口查询结果，不会以开发样例替代数据库。
+仓库根目录的 `npm run web:dev` 同时提供聊天页 `/`、展板 `/dashboard/` 和共用的数据库只读接口；凭据统一由 `packages/web/.env` 在服务器端加载。聊天页的“查看更多”通过 `table` 参数传递当前来源，展板保持现有布局并选择对应电机和数据来源。两套页面没有合并样式或移动目录。
 
-页面统一卡片边框与间距、标题层次、数字字体和44px高的表单控件。时间信息分组显示，明细表使用隔行底色与固定表头；窄屏沿用现有导航和卡片列数调整。主要配色、查询与刷新规则保持一致。
+本目录仍支持独立启动，前端入口改为 `http://127.0.0.1:3000/dashboard/`，独立模式继续使用下面的数据库启动与配置步骤。静态资源使用 Vite 基础路径，因此整合模式和独立模式共用同一套展板资源。
 
-截至2026年10月11日，当前页面功能及五张截图已同步到个人仓库 `main`，尚未部署在线服务。页面截图与尺寸列表见[根README的页面效果](../README.md#页面效果)，文件位于 `output/playwright/`：四张1920×1080、1366×900、768×1024、375×812首屏截图，以及375像素宽的手机整页长图。
+本目录是可独立复制、安装和运行的监控展板项目，包含完整页面、数据库只读接口、共享类型、静态资源和测试。前端为 React / TypeScript / Vite / Tailwind，后端为 Node / MySQL，只查询 `dcma` 库的五张已确认表。无需启动 Pi SDK，也不依赖仓库中的 `packages/web/`。
+
+页面采用白色侧边栏、蓝色选中态与浅色数据面板，六个监控页面只显示“查看设备”选中的一台电机；系统配置独立保存本机配置。正式页面只显示接口查询结果，不会以开发样例替代数据库。
+
+页面统一卡片边框与间距、标题层次、数字字体和44px高的表单控件。时间信息分组显示，明细表使用隔行底色与固定表头；窄屏调整导航和卡片列数。
+
+页面参考截图拍摄于2026年10月11日，不包含之后新增的系统配置、图表工具和近期事件列表。当前项目尚未部署在线服务。
+
+| 尺寸 | 截图 |
+|---|---|
+| 电脑端 · 1920×1080 | [查看首屏](output/playwright/realtime-size-1920x1080.png) |
+| 笔记本 · 1366×900 | [查看首屏](output/playwright/realtime-size-1366x900.png) |
+| 平板 · 768×1024 | [查看首屏](output/playwright/realtime-size-768x1024.png) |
+| 手机 · 375×812 | [查看首屏](output/playwright/realtime-size-375x812.png) |
+| 手机整页 · 375像素宽 | [查看长截图](output/playwright/realtime-size-mobile-full.png) |
 
 ## 启动
 
-当前本机环境和 `database/.env` 已准备完成，在两个终端分别运行：
+需要 Node.js 22.18 或更新版本（含 npm）、可访问的 MySQL 数据库和只读账号。获取公共仓库的 `dashboard` 分支后，在本目录安装依赖；如果已经取得项目，直接进入它的 `dashboard` 目录：
 
 ```powershell
-cd D:\DCMA-Agent\dashboard
+git clone --branch dashboard --single-branch https://github.com/JACK-Chen415/DCMA-pi-Agent.git
+cd DCMA-pi-Agent/dashboard
+npm ci --ignore-scripts
+if (-not (Test-Path database/.env)) { Copy-Item database/.env.example database/.env }
+```
+
+编辑 `database/.env`，填写 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`，保持 `MYSQL_DATABASE=dcma`。示例中的 `127.0.0.1` 代表本机数据库，远程数据库需填写实际地址；学校数据库需要校园网或 VPN。账号密码由后端读取，不进入前端。配置修改后重启后端，不要覆盖已有 `.env` 或将凭据提交到 Git。
+
+数据库需要已有的 `dcma.real_data`、`real_data_01`、`real_data_02`、`real_data_03`、`real_data_04` 表及采样记录。模拟表也是已入库的数据，并非页面自动生成。表需要记录编号 `id`、采集时间 `timestamp`、`device_name`、`inverter_name`；历史异常接口还需 `fault_code`、`alarm_code`。完整原始字段及显示映射见 [dashboard-types.ts](database/dashboard-types.ts)。缺表、缺必要字段或混入多个设备时接口会明确提示。项目不包含数据库备份或建表迁移，不会自动创建表、写入采样或用样例替代真实查询。
+
+配置完成后，在两个终端分别进入这个项目的 `dashboard` 目录并运行：
+
+```powershell
 npm run dev:database
 ```
 
 ```powershell
-cd D:\DCMA-Agent\dashboard
 npm run dev:frontend
 ```
 
-打开 <http://127.0.0.1:3000>。前端将 `/api/database` 转发到本机 `3001` 的后端，两个服务仅监听本机；分别按 Ctrl+C 停止。
+打开 <http://127.0.0.1:3000>。前端将 `/api/database` 转发到本机 `3001` 的后端，两个服务仅监听本机；分别按 Ctrl+C 停止。若同时运行原工作台 `packages/web/`，它的默认3000端口会与展板冲突，应先停止其中一个服务。
 
-新电脑需要 Node.js 22.18 或更新版本，在 `dashboard` 运行 `npm ci --ignore-scripts`。只有本机配置不存在时才复制示例：
-
-```powershell
-if (-not (Test-Path database/.env)) { Copy-Item database/.env.example database/.env }
-```
-
-编辑 `database/.env` 填写数据库账号密码，库名为 `dcma`，主机和端口已在示例中填写。需要校园网/VPN能够访问数据库。修改配置后重启后端；不要覆盖已有 `.env`，不要将凭据放进前端、截图或 Git。
+依赖在本目录统一安装，前后端无需分别安装；单独复用时完整复制本目录，包括 `package-lock.json`、两个子项目及资源即可。`frontend/reference/` 是旧布局参考，保留来源说明，不参与编译，也不是运行依赖。
 
 ## 页面操作与数据规则
 
@@ -92,9 +111,9 @@ npm run test
 npm run build
 ```
 
-当前三个命令通过，16项测试通过。自动测试不读取本机 `.env`，接口测试清除配置，查询异常测试替换连接；覆盖单位、代码原值/变色、只读/参数、缺失表/字段、多设备、空表、无效时间、截断、0/负数、仪表与曲线断点，并覆盖历史采样时间边界、分页无重复、过大范围/响应拒绝、取消；验证连续事件、归零/换码、故障报警独立、缺失不恢复、未结束、时间范围重叠、240条跨窗口历史、稳定分页与持续时间格式，以及事件回看的前后缓冲和未结束区间。构建输出为 `frontend/dist`，未配置发布服务。
+个人独立项目中三个命令及16项测试已通过；公共同步版另执行类型检查和对应单元测试，不重复构建或浏览器验收。自动测试不读取本机 `.env`，接口测试清除配置，查询异常测试替换连接；覆盖单位、代码原值/变色、只读/参数、缺失表/字段、多设备、空表、无效时间、截断、0/负数、仪表与曲线断点，并覆盖历史采样时间边界、分页无重复、过大范围/响应拒绝、取消；验证连续事件、归零/换码、故障报警独立、缺失不恢复、未结束、时间范围重叠、240条跨窗口历史、稳定分页与持续时间格式，以及事件回看的前后缓冲和未结束区间。构建输出为 `frontend/dist`，未配置发布服务。
 
-已执行真实数据库只读检查：
+配置好实际数据库后，可单独运行只读联调检查：
 
 ```powershell
 node database/test/live-check.ts
@@ -112,6 +131,8 @@ npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=f
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-history.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-gauges.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-sample-history.js
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-communication.js
+npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-trend-tools.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-priority.js
 npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=frontend/test/browser-professional.js
 ```
@@ -128,11 +149,11 @@ npx --yes --package @playwright/cli playwright-cli -s=dcma run-code --filename=f
 
 ## 来源与未确认资料
 
-基础预览、样式、DCMA标志和接口最初复制/提取自公用仓库 `JACK-Chen415/DCMA-pi-Agent` 的 `dashboard-frontend` 分支，提交 `424bf0ddd005f620cce29e3acc009f4ee8284f9e`。本轮只修改个人独立项目；公用嵌套 `pi/` 未修改。折线图已调整为展板多曲线交互；原 `DatabasePanel` 保留，`frontend/reference/RightPanel.tsx`仅作参考，不参与编译。
+基础预览、样式、DCMA标志和接口最初复制/提取自公用仓库 `JACK-Chen415/DCMA-pi-Agent` 的提交 `424bf0ddd005f620cce29e3acc009f4ee8284f9e`；该分支现名为 `dashboard`。折线图已调整为展板多曲线交互；原 `DatabasePanel` 保留，`frontend/reference/RightPanel.tsx`仅作参考，不参与编译。
 
 原相关提交作者为 Jahon，MIT许可证保留于 `LICENSE`。未复制模型配置、聊天、凭据或Git元数据。
 
-单位已按用户截图标注；脉冲频率根据G120参数惯例及现有数值量级按 kHz 标注；非零代码含义、额定值及特殊值含义仍待资料。事件起止时间基于历史采样观测，不代表设备独立记录的精确发生/恢复时刻。明确的数据过期阈值尚未确定并实现，目前显示最后采集时间和采集更新状态。当前页面功能、说明和五张截图已按用户授权同步到个人仓库main；未实施部署、数据库写入或未要求的聊天、健康评分等功能。快速启动见根目录 `README.md`，页面介绍见 `展板页面分析与介绍.md`；当前范围和提交记录见根目录 `HANDOFF.md` 第0节，开发说明第2节仍可用作字段参考。
+单位已按参考图标注；脉冲频率根据G120参数惯例及现有数值量级按 kHz 标注；非零代码含义、额定值及特殊值含义仍待资料。事件起止时间基于历史采样观测，不代表设备独立记录的精确发生/恢复时刻。明确的数据过期阈值尚未确定并实现，目前显示最后采集时间和采集更新状态。项目不包含部署服务、数据库写入、聊天或健康评分功能。
 
 ### 系统配置
 

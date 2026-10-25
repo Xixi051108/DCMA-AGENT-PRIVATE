@@ -64,7 +64,8 @@ body {
 }
 
 .panel-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; }
-.message-markdown { min-width: 0; font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
+.message-markdown { min-width: 0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.message-markdown .answer-limitation { font-size: 12px; }
 .message-markdown > :first-child { margin-top: 0; }
 .message-markdown > :last-child { margin-bottom: 0; }
 .message-markdown p, .message-markdown ul, .message-markdown ol, .message-markdown blockquote, .message-markdown pre { margin: .8rem 0; }
@@ -96,4 +97,43 @@ body {
 .dialog-shell::backdrop { background: rgb(15 23 42 / 40%); backdrop-filter: blur(3px); }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
 button:disabled { cursor: not-allowed; }
+.message-actions { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #e2e8f0; margin-top: 16px; padding-top: 10px; }
+.message-actions button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; font-size: 12px; color: #1d4ed8; border-radius: 8px; }
+.message-actions button:hover:not(:disabled) { background: #eff6ff; }
+.message-actions button:disabled { opacity: .5; }
+.execution-details { margin-top: 12px; color: #475569; font-size: 12px; line-height: 1.8; }
+.execution-progress { display: block; color: #1d4ed8; padding: 8px 0; }
+.execution-details summary { padding: 8px 0; cursor: pointer; color: #1d4ed8; min-height: 36px; }
+.execution-details summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.execution-details ol { border-left: 2px solid #bfdbfe; padding-left: 12px; margin: 4px 0 10px; }
+.execution-details li { padding: 10px 0; overflow-wrap: anywhere; }
+.execution-details li + li { border-top: 1px solid #e2e8f0; }
+.execution-details p { white-space: pre-wrap; margin: 6px 0; }
+.execution-step-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.execution-details pre { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; } }
+
+.analysis-chart-card { margin-top: 18px; border: 1px solid #dde7f2; border-radius: 16px; overflow: hidden; background: white; min-width: 0; }
+.analysis-chart-heading { display: flex; gap: 10px; align-items: flex-start; padding: 16px 16px 8px; }
+.analysis-chart-icon { color: #2563eb; background: #eff6ff; border-radius: 9px; padding: 8px; flex-shrink: 0; }
+.analysis-chart-heading h3 { font-size: 14px; font-weight: 650; color: #0f172a; line-height: 1.5; }
+.analysis-chart-heading p, .analysis-chart-scope { font-size: 11px; line-height: 1.7; color: #64748b; }
+.analysis-chart-badge { display: inline-block; margin-left: 8px; background: #f1f5f9; color: #475569; border-radius: 5px; padding: 1px 6px; }
+.analysis-chart-scope { padding: 0 16px 10px; border-bottom: 1px solid #f1f5f9; }
+.analysis-chart-surface { width: 100%; min-width: 0; }
+.analysis-chart-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 14px; border-top: 1px solid #f1f5f9; }
+.analysis-chart-actions button, .analysis-chart-actions a, .analysis-chart-pagination button { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 7px; padding: 6px 9px; color: #475569; background: white; text-decoration: none; }
+.analysis-chart-actions button:hover:not(:disabled), .analysis-chart-actions a:hover { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+.analysis-chart-actions button:disabled, .analysis-chart-pagination button:disabled { opacity: .4; }
+.analysis-chart-notes { padding: 11px 16px; background: #f8fafc; color: #64748b; font-size: 10px; line-height: 1.8; border-top: 1px solid #e8eef5; }
+.analysis-chart-data { border-top: 1px solid #e2e8f0; padding: 12px; }
+.analysis-chart-data-scroll { max-height: 340px; overflow: auto; }
+.analysis-chart-data table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+.analysis-chart-data th { position: sticky; top: 0; background: #f1f5f9; text-align: left; }
+.analysis-chart-data th, .analysis-chart-data td { padding: 7px 10px; border-bottom: 1px solid #e8eef5; }
+.analysis-chart-pagination { display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 10px; color: #64748b; font-size: 11px; }
+.analysis-chart-error { color: #b91c1c; background: #fef2f2; padding: 12px; font-size: 12px; }
+.analysis-chart-loading { padding: 28px 16px; font-size: 12px; color: #64748b; }
+.analysis-chart-card:fullscreen { overflow: auto; padding: 20px; background: white; }
+.analysis-chart-card:fullscreen .analysis-chart-surface { min-height: 55vh; }
+@media (max-width: 480px) { .analysis-chart-heading { padding: 12px 10px 6px; } .analysis-chart-heading h3 { font-size: 13px; } .analysis-chart-scope { padding-left: 10px; padding-right: 10px; } .analysis-chart-actions { padding: 8px; gap: 5px; } .analysis-chart-actions button, .analysis-chart-actions a { padding: 7px; } .analysis-chart-card:fullscreen { padding: 6px; } }

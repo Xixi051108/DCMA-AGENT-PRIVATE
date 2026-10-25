@@ -1,3 +1,5 @@
+import type { ChartReference } from "../chart-contracts.ts";
+import type { ToolStep } from "../interaction-contracts.ts";
 export interface Device {
 	id: string;
 	code: string;
@@ -41,6 +43,8 @@ export interface ChartSample extends Omit<ChartPoint, "value"> {
 	value: number | null;
 }
 export interface ChatMessage {
+	steps?: ToolStep[];
+	charts?: ChartReference[];
 	id: string;
 	role: "user" | "assistant";
 	content: string;

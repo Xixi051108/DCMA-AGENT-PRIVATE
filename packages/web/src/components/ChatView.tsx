@@ -1,13 +1,23 @@
-import { Cpu, Download, User } from "lucide-react";
+import { Cpu, User } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { downloadText } from "../download.ts";
-import { messageReport } from "../report.ts";
+import { timeToSeconds } from "../time-display.ts";
 import type { ChatMessage } from "../types.ts";
+import { AnalysisChartCard } from "./AnalysisChartCard";
+import { ExecutionDetails } from "./ExecutionDetails";
 import { MessageContent } from "./MessageContent";
-export function ChatView({ messages, isStreaming }: { messages: ChatMessage[]; isStreaming: boolean }) {
+import { ReportActions } from "./ReportActions";
+export function ChatView({
+	messages,
+	isStreaming,
+	onRequery,
+}: {
+	messages: ChatMessage[];
+	isStreaming: boolean;
+	onRequery?: (text: string) => void;
+}) {
 	const bottom = useRef<HTMLDivElement>(null);
 	const last = messages.at(-1);
-	const scrollKey = `${messages.length}:${last?.id}:${last?.content.length}`;
+	const scrollKey = `${messages.length}:${last?.id}:${last?.content.length}:${last?.charts?.length}`;
 	useEffect(() => {
 		if (scrollKey) bottom.current?.scrollIntoView({ behavior: isStreaming ? "instant" : "smooth" });
 	}, [scrollKey, isStreaming]);
@@ -19,7 +29,7 @@ export function ChatView({ messages, isStreaming }: { messages: ChatMessage[]; i
 			className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-5 w-full"
 		>
 			<div className="max-w-[800px] mx-auto space-y-5">
-				{messages.map((message) => (
+				{messages.map((message, index) => (
 					<div
 						key={message.id}
 						className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
@@ -30,7 +40,7 @@ export function ChatView({ messages, isStreaming }: { messages: ChatMessage[]; i
 							</span>
 						)}
 						<article
-							className={`min-w-0 max-w-[92%] sm:max-w-[88%] rounded-2xl p-4 ${message.role === "user" ? "bg-blue-600 text-white" : "bg-white border border-slate-100"}`}
+							className={`min-w-0 max-w-[92%] sm:max-w-[88%] rounded-2xl p-4 ${message.charts?.length ? "w-full" : ""} ${message.role === "user" ? "bg-blue-600 text-white" : "bg-white border border-slate-100"}`}
 						>
 							{message.role === "assistant" && (
 								<p className="text-[11px] text-slate-500 border-b border-slate-100 pb-2 mb-2">
@@ -41,32 +51,29 @@ export function ChatView({ messages, isStreaming }: { messages: ChatMessage[]; i
 								<MessageContent content={message.content} />
 							) : (
 								<div className="text-[13px] leading-relaxed whitespace-pre-wrap break-words">
-									{message.content}
+									{timeToSeconds(message.content)}
 								</div>
 							)}
-							{message.status === "streaming" && (
-								<output className="block text-xs text-blue-600 mt-2 animate-pulse">正在生成…</output>
-							)}
+							{message.role === "assistant" && <ExecutionDetails message={message} />}
+							{message.role === "assistant" &&
+								message.charts?.map((chart) => (
+									<AnalysisChartCard
+										key={chart.id}
+										reference={chart}
+										onRequery={onRequery}
+										disabled={isStreaming}
+									/>
+								))}
 							{(message.status === "error" || message.status === "cancelled") && (
 								<p className="text-xs text-red-600 mt-2">
 									{message.status === "error" ? "本次请求失败，可重新发送" : "生成已停止"}
 								</p>
 							)}
 							{message.role === "assistant" && message.status === "done" && (
-								<button
-									type="button"
-									onClick={() =>
-										downloadText(
-											`DCMA-${message.id}.md`,
-											messageReport(message),
-											"text/markdown;charset=utf-8",
-										)
-									}
-									className="mt-3 flex items-center gap-1 text-xs text-blue-600"
-								>
-									<Download className="w-3 h-3" />
-									下载分析报告
-								</button>
+								<ReportActions
+									message={message}
+									question={messages[index - 1]?.role === "user" ? messages[index - 1].content : ""}
+								/>
 							)}
 						</article>
 						{message.role === "user" && (

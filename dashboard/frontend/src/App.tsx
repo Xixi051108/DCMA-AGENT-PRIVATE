@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { fieldLabels, numericFields, type CodeEvent, type DashboardField, type DashboardRange, type DashboardTable, type NumericField } from "./database-types.ts";
+import { dashboardTables, fieldLabels, numericFields, type CodeEvent, type DashboardField, type DashboardRange, type DashboardTable, type NumericField } from "./database-types.ts";
 import { displayTime, displaySampleAge, displayValue, displayRawField, codeClassName, displayFieldLabel, fieldUnits } from "./dashboard-view.ts";
 import { useDashboard } from "./useDashboard.ts";
 import { useSampleHistory } from "./useSampleHistory.ts";
@@ -53,8 +53,9 @@ function NavIcon({ path }: { path: string }) {
 
 export function App() {
 	const [view, setView] = useState<View>(currentView);
-	const [motor, setMotor] = useState(1);
-	const [history, setHistory] = useState(false);
+	const [initialTable] = useState(() => dashboardTables.find((table) => table === new URLSearchParams(window.location.search).get("table")) ?? "real_data_01");
+	const [motor, setMotor] = useState(initialTable === "real_data" ? 1 : Number(initialTable.slice(-2)));
+	const [history, setHistory] = useState(initialTable === "real_data");
 	const [limit, setLimit] = useState<50 | 100 | 200>(100);
 	const [metric, setMetric] = useState<"speed" | "torque" | NumericField>("speed");
 	const [from, setFrom] = useState(""), [to, setTo] = useState("");
@@ -97,7 +98,7 @@ export function App() {
 	return (
 		<div className="dashboard-shell">
 			<aside className="sidebar">
-				<div className="brand"><img src="/assets/logo.png" alt="" /><div><strong>DCMA</strong><span>电机与变频器监控</span></div></div>
+				<div className="brand"><img src={`${import.meta.env.BASE_URL}assets/logo.png`} alt="" /><div><strong>DCMA</strong><span>电机与变频器监控</span></div></div>
 				<p className="sidebar-caption">监控工作台</p>
 				<select className="mobile-nav" aria-label="切换监控页面" value={view} onChange={(event) => { window.location.hash = event.target.value; }}>{views.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>
 				<nav className="sidebar-nav" aria-label="监控页面">{views.map((item) => <a key={item.id} href={`#${item.id}`} aria-current={view === item.id ? "page" : undefined}><NavIcon path={item.icon} /><span>{item.title}</span>{view === item.id && <i aria-hidden="true" />}</a>)}</nav>
@@ -111,7 +112,7 @@ export function App() {
 				<div className="sidebar-footer"><span className={`connection ${view === "settings" ? "" : error ? "failed" : data ? "connected" : ""}`} />{view === "settings" ? "系统配置" : error ? "接口查询失败" : data ? "数据库查询成功" : browsingHistory && !range ? "等待历史查询" : "正在连接接口"}</div>
 			</aside>
 			<main className="dashboard-main">
-				<header className="page-header"><div><p className="eyebrow">电机监控 / {page.title}</p><h1>{page.title}</h1></div>{view !== "settings" && <div className="header-actions"><label>{browsingHistory ? "每页条数" : "采样条数"} <select aria-label={browsingHistory ? "每页条数" : "采样条数"} value={limit} onChange={(event) => { setLimit(Number(event.target.value) as 50 | 100 | 200); setSamplePage(1); }}>{[50, 100, 200].map((value) => <option key={value} value={value}>{value} 条</option>)}</select></label><button className="refresh-button" aria-busy={loading} onClick={refresh} disabled={loading || (browsingHistory && !range)}>{loading ? "正在查询…" : browsingHistory ? "刷新查询" : "刷新数据"}</button></div>}</header>
+				<header className="page-header"><div><p className="eyebrow">电机监控 / {page.title}</p><h1>{page.title}</h1></div><div className="header-actions">{view !== "settings" && <><label>{browsingHistory ? "每页条数" : "采样条数"} <select aria-label={browsingHistory ? "每页条数" : "采样条数"} value={limit} onChange={(event) => { setLimit(Number(event.target.value) as 50 | 100 | 200); setSamplePage(1); }}>{[50, 100, 200].map((value) => <option key={value} value={value}>{value} 条</option>)}</select></label><button className="refresh-button" aria-busy={loading} onClick={refresh} disabled={loading || (browsingHistory && !range)}>{loading ? "正在查询…" : browsingHistory ? "刷新查询" : "刷新数据"}</button></>}<a className="refresh-button" href="/">返回 Agent 对话</a></div></header>
 				{browsingHistory && <section className="panel-card" aria-label="采样时间查询">
 					<div className="section-heading"><h2>查询时间范围</h2><span className="group-count">北京时间 · 手动查询</span></div>
 					<form className="code-filters" onSubmit={(event) => {
@@ -135,7 +136,7 @@ export function App() {
 				<div aria-live="polite">{error && <p className="notice error">{data ? "刷新失败，以下保留上次成功结果。" : "当前选择查询失败。"}{error}</p>}{!loading && data && !latest && <p className="notice">{browsingHistory ? "所选时间段暂无采样记录。" : selectedSource?.message || "当前来源暂无采样记录。"}</p>}{warnings.map((warning) => <p className="notice" key={warning}>{warning}</p>)}</div>
 				</>}
 				{view === "overview" && <>
-					<section className="panel-card overview-intro"><div className="overview-copy"><div><p className="eyebrow">设备与来源</p><h2>G120 电机 {motor}</h2><p className="muted">查看这台电机与变频器的读数、趋势和采样记录。</p></div><a className="text-link" href="#realtime">查看采样趋势 →</a></div><figure className="equipment-figure"><img className="equipment-illustration" src="/assets/illustrations/motor-drive.svg" alt="电机与变频器连接关系的示意图" width="420" height="200" decoding="async" /><figcaption>电机与变频器 · 驱动链示意</figcaption></figure></section>
+					<section className="panel-card overview-intro"><div className="overview-copy"><div><p className="eyebrow">设备与来源</p><h2>G120 电机 {motor}</h2><p className="muted">查看这台电机与变频器的读数、趋势和采样记录。</p></div><a className="text-link" href="#realtime">查看采样趋势 →</a></div><figure className="equipment-figure"><img className="equipment-illustration" src={`${import.meta.env.BASE_URL}assets/illustrations/motor-drive.svg`} alt="电机与变频器连接关系的示意图" width="420" height="200" decoding="async" /><figcaption>电机与变频器 · 驱动链示意</figcaption></figure></section>
 					<section aria-label="运行信息" className="running-grid">{runningCards(runningFields)}</section>
 					<section className="panel-card" aria-label="完整参数">
 						<div className="section-heading"><h2>完整参数</h2><a className="text-link" href="#records">查看采样明细 →</a></div>
