@@ -1,0 +1,42 @@
+import { readFile, writeFile } from 'node:fs/promises';
+const response = JSON.parse(await readFile(new URL('./results/P01.json', import.meta.url), 'utf8'));
+const workspace = { conversations:[{id:'evaluation-replay',title:'真实回答回放：设备基本信息',time:response.startedAt,deviceId:'real_data_01',messages:[{id:'eval-user',role:'user',content:response.request.text,timestamp:response.startedAt,status:'done'},{id:'eval-answer',role:'assistant',content:response.answer,timestamp:response.startedAt,status:'done',engine:'DCMA Agent · deepseek/deepseek-flash'}]}],activeId:'evaluation-replay',deviceId:'real_data_01',settings:{model:'deepseek/deepseek-flash',telemetryIntervalMs:3000,alarmThreshold:75,databaseEnabled:true},datasets:{} };
+const script = `async (page) => {
+  const checks = []; const errors = []; const observedRequests = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if(request.url().includes('/api/chat')) observedRequests.push(request.url()); });
+  const check = (id, condition, detail) => { checks.push({id,passed:!!condition,detail}); };
+  await page.goto('http://127.0.0.1:3000/');
+  await page.evaluate(state => localStorage.setItem('dcma-workspace-v1',JSON.stringify(state)), ${JSON.stringify(workspace)});
+  await page.reload();
+  await page.getByRole('log',{name:'对话消息'}).waitFor();
+  check('U01', (await page.locator('.message-markdown').textContent()).includes('G120'), '真实P01回答经现有渲染组件显示');
+  check('U02', await page.locator('.message-markdown h1,.message-markdown h2,.message-markdown h3').count() > 0, '真实回答Markdown标题解析');
+  check('U03', await page.locator('.message-markdown table').count() > 0, '真实回答Markdown表格解析');
+  for (const width of [375,768,1440]) {
+    await page.setViewportSize({width,height:900});
+    check('U04-'+width, await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth), '页面整体无横向溢出');
+    check('U05-'+width, await page.getByRole('textbox',{name:'问题输入'}).isVisible(), '输入框可见');
+    await page.getByRole('log',{name:'对话消息'}).evaluate(el=>el.scrollTop=0);
+    await page.screenshot({path:'output/playwright/agent-eval-replay-'+width+'.png',fullPage:true});
+  }
+  await page.setViewportSize({width:1440,height:900});
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button',{name:'下载分析报告'}).click();
+  const download = await downloadPromise;
+  await download.saveAs('D:/DCMA-Agent/agent-evaluation/2026-10-15/analysis-download.md');
+  check('U06', download.suggestedFilename().endsWith('.md'), '分析内容可导出Markdown');
+  await page.getByRole('button',{name:'查看更多',exact:true}).click();
+  await page.waitForURL('**/dashboard/**');
+  check('U07',page.url().includes('table=real_data_01')&&page.url().endsWith('#realtime'),'进入展板保留来源');
+  await page.getByRole('heading',{name:'实时数据',exact:true,level:1}).waitFor();
+  check('U08',await page.locator('.gauge-card').count()===6,'展板六个仪表加载');
+  await page.screenshot({path:'output/playwright/agent-eval-dashboard.png',fullPage:true});
+  await page.goBack();
+  await page.getByRole('log',{name:'对话消息'}).waitFor();
+  check('U09',(await page.locator('.message-markdown').textContent()).includes('G120'),'返回聊天页保留会话');
+  check('U10',errors.length===0,JSON.stringify(errors));
+  check('U11',observedRequests.length===0,'回放检查没有发起额外模型请求');
+  return {mode:'saved-real-answer-replay',sourceCase:'P01',checks,errors,observedRequests};
+}`;
+await writeFile(new URL('./ui-run.js',import.meta.url),script);
