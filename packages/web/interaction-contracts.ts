@@ -1,6 +1,7 @@
 import { chartIdPattern } from "./chart-contracts.ts";
 
 export const toolLabels: Record<string, string> = {
+	submit_analysis: "校验分析结论",
 	list_industrial_tables: "查询数据目录",
 	read_industrial_dashboard: "读取设备采样",
 	read_industrial_rows: "筛选原始记录",
@@ -13,6 +14,8 @@ export const toolLabels: Record<string, string> = {
 	assess_device_state: "评估设备状态",
 	lookup_fault_code: "查阅故障码手册",
 	search_maintenance_knowledge: "检索维修资料",
+	search_fault_knowledge: "检索故障资料",
+	list_fault_knowledge_sources: "查看故障资料来源",
 	build_diagnostic_evidence: "整理诊断证据",
 	create_analysis_chart: "生成图表",
 	export_analysis_report: "导出证据报告",
@@ -25,6 +28,8 @@ export interface ToolStep {
 	status: "running" | "done" | "error";
 	durationMs?: number;
 	evidenceId?: string;
+	/** 工具失败时的原因，最多200字；只用于步骤列表展示。 */
+	error?: string;
 }
 export interface EvidenceRecord {
 	id: string;
@@ -62,6 +67,9 @@ export function validateToolSteps(value: unknown): ToolStep[] {
 					: {}),
 				...(typeof item.evidenceId === "string" && chartIdPattern.test(item.evidenceId)
 					? { evidenceId: item.evidenceId }
+					: {}),
+				...(typeof item.error === "string" && item.error.trim() && item.error.length <= 200
+					? { error: item.error }
 					: {}),
 			},
 		];

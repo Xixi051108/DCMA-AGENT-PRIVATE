@@ -13,6 +13,7 @@ import { WelcomeView } from "./components/WelcomeView";
 import { createConversationStorage } from "./conversation-storage.ts";
 import { dashboardTables, databaseDataset, databaseDevice, databaseMetrics, useDashboard } from "./dashboard-data.ts";
 import { downloadText, exportStatusEvent } from "./download.ts";
+import { createMessageId } from "./message-id.ts";
 import { loadWorkspace, storageKey } from "./storage.ts";
 import { getMetrics, parseTelemetry, telemetryCsv } from "./telemetry.ts";
 import type { AppSettings, BackendStatus, ChatMessage } from "./types.ts";
@@ -33,9 +34,7 @@ export function App() {
 	const [renameId, setRenameId] = useState<string | null>(null);
 	const [renameValue, setRenameValue] = useState("");
 	const [deleteId, setDeleteId] = useState<string | null>(null);
-	const [busy, setBusy] = useState(false);
-	const request = useRef<AbortController | null>(null);
-	const requestId = useRef<string | null>(null);
+	const requests = useRef(new Map<string, { controller: AbortController; assistantId: string }>());
 	const fileInput = useRef<HTMLInputElement>(null);
 	const workspaceRef = useRef(workspace);
 	workspaceRef.current = workspace;
@@ -46,6 +45,10 @@ export function App() {
 		databaseDevice(
 			name,
 			live.data?.sources.find((source) => source.table === name),
+			live.error ||
+				(workspace.offlineDeviceId === name && workspace.datasets[name]?.imported
+					? "当前为离线导入数据，无法确认实时状态"
+					: ""),
 		),
 	);
 	const device = devices.find((item) => item.id === table)!;
@@ -56,10 +59,16 @@ export function App() {
 		: live.data?.sources.find((source) => source.table === table)?.message || live.update;
 	const checkedAt = live.data ? new Date(live.data.queriedAt).toLocaleString("zh-CN") : "尚未查询成功";
 	const conversation = workspace.conversations.find((item) => item.id === workspace.activeId);
+	const generatingConversations = workspace.conversations.filter((item) =>
+		item.messages.some((message) => message.role === "assistant" && message.status === "streaming"),
+	);
+	const busy = generatingConversations.length > 0;
+	const isStreaming = generatingConversations.some((item) => item.id === workspace.activeId);
 	const settings = workspace.settings;
 	const followReply = useCallback(
 		async (id: string, assistantId: string, controller: AbortController, payload?: unknown) => {
-			const updateReply = (update: (message: ChatMessage) => ChatMessage) =>
+			const updateReply = (update: (message: ChatMessage) => ChatMessage) => {
+				if (requests.current.get(id)?.controller !== controller) return;
 				setWorkspace((state) => ({
 					...state,
 					conversations: state.conversations.map((item) =>
@@ -73,6 +82,7 @@ export function App() {
 							: item,
 					),
 				}));
+			};
 			try {
 				const status = await streamChat(
 					payload,
@@ -99,11 +109,7 @@ export function App() {
 						(controller.signal.aborted ? "" : `\n${error instanceof Error ? error.message : "请求失败"}`),
 				}));
 			} finally {
-				if (request.current === controller) {
-					request.current = null;
-					requestId.current = null;
-					setBusy(false);
-				}
+				if (requests.current.get(id)?.controller === controller) requests.current.delete(id);
 			}
 		},
 		[],
@@ -185,20 +191,24 @@ export function App() {
 			clearInterval(timer);
 		};
 	}, [settings.telemetryIntervalMs]);
-	useEffect(() => () => request.current?.abort(), []);
 	useEffect(() => {
-		if (!historyReady || busy || request.current) return;
+		const active = requests.current;
+		return () => {
+			for (const { controller } of active.values()) controller.abort();
+			active.clear();
+		};
+	}, []);
+	useEffect(() => {
+		if (!historyReady) return;
 		for (const item of workspaceRef.current.conversations) {
+			if (requests.current.has(item.id)) continue;
 			const message = item.messages.find((entry) => entry.status === "streaming" && entry.role === "assistant");
 			if (!message) continue;
 			const controller = new AbortController();
-			request.current = controller;
-			requestId.current = message.id;
-			setBusy(true);
+			requests.current.set(item.id, { controller, assistantId: message.id });
 			void followReply(item.id, message.id, controller);
-			break;
 		}
-	}, [historyReady, busy, followReply]);
+	}, [historyReady, followReply]);
 	useEffect(() => {
 		if (!notice) return;
 		const timer = setTimeout(() => setNotice(""), 7000);
@@ -212,18 +222,16 @@ export function App() {
 		return () => window.removeEventListener(exportStatusEvent, exported);
 	}, []);
 
-	const stop = () => {
-		const controller = request.current;
-		const id = requestId.current;
-		if (!controller || !id) return;
-		void cancelChat(id)
-			.then(() => controller.abort())
+	const stop = (conversationId = workspaceRef.current.activeId) => {
+		const request = conversationId ? requests.current.get(conversationId) : undefined;
+		if (!request) return;
+		void cancelChat(request.assistantId)
+			.then(() => request.controller.abort())
 			.catch((error: unknown) => {
 				setNotice(error instanceof Error ? error.message : "停止生成失败，请重试。");
 			});
 	};
 	const newChat = () => {
-		stop();
 		setWorkspace((state) => ({ ...state, activeId: null }));
 		setSidebarOpen(false);
 	};
@@ -236,7 +244,15 @@ export function App() {
 		}
 	};
 	const sendMessage = async (text: string) => {
-		if (!text.trim() || request.current) return;
+		const workspace = workspaceRef.current;
+		const conversation = workspace.conversations.find((item) => item.id === workspace.activeId);
+		if (
+			!text.trim() ||
+			(conversation &&
+				(requests.current.has(conversation.id) ||
+					conversation.messages.some((message) => message.status === "streaming")))
+		)
+			return;
 		if (workspace.conversations.length >= 50 && !conversation) {
 			setNotice("最多保留 50 个会话，请先导出并删除不需要的会话。");
 			return;
@@ -250,48 +266,50 @@ export function App() {
 			return;
 		}
 		const controller = new AbortController();
-		request.current = controller;
-		setBusy(true);
-		const id = conversation?.id ?? crypto.randomUUID();
-		const assistantId = crypto.randomUUID();
-		requestId.current = assistantId;
-		const now = new Date().toISOString();
-		const userMessage: ChatMessage = {
-			id: crypto.randomUUID(),
-			role: "user",
-			content: text.trim(),
-			timestamp: now,
-			status: "done",
-		};
-		const assistant: ChatMessage = {
-			id: assistantId,
-			role: "assistant",
-			content: "",
-			timestamp: now,
-			status: "streaming",
-			engine: `DCMA Agent · ${settings.model}`,
-		};
-		const next = {
-			...workspace,
-			activeId: id,
-			conversations: conversation
-				? workspace.conversations.map((item) =>
-						item.id === id ? { ...item, time: now, messages: [...item.messages, userMessage, assistant] } : item,
-					)
-				: [
-						{
-							id,
-							title: text.trim().slice(0, 28),
-							time: now,
-							deviceId: device.id,
-							messages: [userMessage, assistant],
-						},
-						...workspace.conversations,
-					],
-		};
-		workspaceRef.current = next;
-		setWorkspace(next);
+		let id = conversation?.id ?? "";
+		let assistantId = "";
 		try {
+			id ||= createMessageId();
+			assistantId = createMessageId();
+			requests.current.set(id, { controller, assistantId });
+			const now = new Date().toISOString();
+			const userMessage: ChatMessage = {
+				id: createMessageId(),
+				role: "user",
+				content: text.trim(),
+				timestamp: now,
+				status: "done",
+			};
+			const assistant: ChatMessage = {
+				id: assistantId,
+				role: "assistant",
+				content: "",
+				timestamp: now,
+				status: "streaming",
+				engine: `DCMA Agent · ${settings.model}`,
+			};
+			const next = {
+				...workspace,
+				activeId: id,
+				conversations: conversation
+					? workspace.conversations.map((item) =>
+							item.id === id
+								? { ...item, time: now, messages: [...item.messages, userMessage, assistant] }
+								: item,
+						)
+					: [
+							{
+								id,
+								title: text.trim().slice(0, 28),
+								time: now,
+								deviceId: device.id,
+								messages: [userMessage, assistant],
+							},
+							...workspace.conversations,
+						],
+			};
+			workspaceRef.current = next;
+			setWorkspace(next);
 			await historyStorage.current?.checkpoint(next);
 			controller.signal.throwIfAborted();
 			const databasePreferred = !offline || settings.databaseEnabled !== false;
@@ -325,6 +343,7 @@ export function App() {
 					.map(({ role, content }) => ({ role, content: content.slice(0, 8000) })),
 			});
 		} catch (error) {
+			setNotice(error instanceof Error ? error.message : "消息发送失败，请重试。");
 			setWorkspace((state) => ({
 				...state,
 				conversations: state.conversations.map((item) =>
@@ -345,11 +364,7 @@ export function App() {
 				),
 			}));
 		} finally {
-			if (request.current === controller) {
-				request.current = null;
-				requestId.current = null;
-				setBusy(false);
-			}
+			if (requests.current.get(id)?.controller === controller) requests.current.delete(id);
 		}
 	};
 	const importFile = async (file: File) => {
@@ -442,7 +457,6 @@ export function App() {
 				activeId={workspace.activeId}
 				onNewChat={newChat}
 				onSelectConversation={(id) => {
-					stop();
 					const item = workspace.conversations.find((entry) => entry.id === id);
 					setWorkspace((state) => ({ ...state, activeId: id, deviceId: item?.deviceId ?? state.deviceId }));
 					setSidebarOpen(false);
@@ -484,7 +498,7 @@ export function App() {
 				{conversation ? (
 					<ChatView
 						messages={conversation.messages}
-						isStreaming={busy}
+						isStreaming={isStreaming}
 						onRequery={(text) => {
 							void sendMessage(text);
 						}}
@@ -496,13 +510,18 @@ export function App() {
 						}}
 					/>
 				)}
+				{busy && !isStreaming && (
+					<output className="mx-4 text-xs text-slate-500">
+						{generatingConversations.length} 个会话正在后台生成，可在当前会话继续提问。
+					</output>
+				)}
 				<ChatInput
 					key={workspace.activeId ?? "new-chat"}
 					onSendMessage={(text) => {
 						void sendMessage(text);
 					}}
-					disabled={busy}
-					onStop={stop}
+					disabled={isStreaming}
+					onStop={isStreaming ? () => stop() : undefined}
 					onImport={openImport}
 				/>
 			</main>
@@ -531,7 +550,7 @@ export function App() {
 					setWorkspace((state) => ({ ...state, offlineDeviceId: undefined }));
 					setNotice("已返回数据库数据；原始上传文件不会被修改");
 				}}
-				disabled={busy}
+				disabled={isStreaming}
 				open={panelOpen}
 				onClose={() => setPanelOpen(false)}
 			/>
@@ -629,7 +648,7 @@ export function App() {
 				</Modal>
 			)}
 			{renameId && (
-				<Modal title="重命名会话" onClose={() => setRenameId(null)}>
+				<Modal title="重命名会话" size="compact" onClose={() => setRenameId(null)}>
 					<form
 						onSubmit={(event) => {
 							event.preventDefault();
@@ -643,40 +662,67 @@ export function App() {
 							setRenameId(null);
 						}}
 					>
+						<div className="flex items-center justify-between gap-3 mb-2">
+							<label htmlFor="conversation-name" className="text-sm font-medium text-slate-700">
+								会话名称
+							</label>
+							<span id="conversation-name-count" className="text-xs tabular-nums text-slate-400">
+								{renameValue.length}/60
+							</span>
+						</div>
 						<input
+							id="conversation-name"
 							className="form-control"
 							aria-label="会话名称"
+							aria-describedby="conversation-name-count"
 							maxLength={60}
 							required
 							value={renameValue}
 							onChange={(event) => setRenameValue(event.target.value)}
 						/>
-						<button className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm" type="submit">
-							保存名称
-						</button>
+						<div className="conversation-dialog-actions">
+							<button className="conversation-dialog-cancel" type="button" onClick={() => setRenameId(null)}>
+								取消
+							</button>
+							<button
+								className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
+								type="submit"
+								disabled={!renameValue.trim()}
+							>
+								保存
+							</button>
+						</div>
 					</form>
 				</Modal>
 			)}
 			{deleteId && (
-				<Modal title="删除会话" subtitle="请先导出需要保留的记录" onClose={() => setDeleteId(null)}>
-					<p className="text-sm mb-4">
-						删除“{workspace.conversations.find((item) => item.id === deleteId)?.title}”及其消息？
+				<Modal title="删除会话" size="compact" onClose={() => setDeleteId(null)}>
+					<p className="text-sm leading-6 text-slate-600">
+						确定删除以下会话及其所有消息？请先导出需要保留的记录。
 					</p>
-					<button
-						type="button"
-						onClick={() => {
-							stop();
-							setWorkspace((state) => ({
-								...state,
-								activeId: state.activeId === deleteId ? null : state.activeId,
-								conversations: state.conversations.filter((item) => item.id !== deleteId),
-							}));
-							setDeleteId(null);
-						}}
-						className="text-sm bg-red-600 text-white px-4 py-2 rounded-xl"
-					>
-						确认删除
-					</button>
+					<p className="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium leading-6 text-slate-800 break-words [overflow-wrap:anywhere]">
+						{workspace.conversations.find((item) => item.id === deleteId)?.title}
+					</p>
+					<div className="conversation-dialog-actions">
+						<button className="conversation-dialog-cancel" type="button" onClick={() => setDeleteId(null)}>
+							取消
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								stop(deleteId);
+								setWorkspace((state) => ({
+									...state,
+									activeId: state.activeId === deleteId ? null : state.activeId,
+									conversations: state.conversations.filter((item) => item.id !== deleteId),
+								}));
+								setDeleteId(null);
+							}}
+							className="bg-red-600 text-white hover:bg-red-700"
+						>
+							确认删除
+						</button>
+					</div>
 				</Modal>
 			)}
 		</div>
